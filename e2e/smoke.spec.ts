@@ -4,7 +4,7 @@ import path from 'node:path';
 
 // Loads the built Chrome extension and hovers posters on a fake cinema page served under a real
 // cinema domain, so the manifest's content script runs. Build first: `npm run build`.
-const EXTENSION = path.resolve('.output/chrome-mv3');
+const EXTENSION = path.resolve('dist/chrome');
 const FIXTURE = readFileSync(path.resolve('e2e/fixtures/cinema.html'), 'utf8');
 const PAGE_URL = 'https://www.cinestar.de/worth-it-e2e';
 

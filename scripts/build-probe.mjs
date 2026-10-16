@@ -4,7 +4,7 @@ await build({
   configFile: false,
   logLevel: 'warn',
   build: {
-    outDir: '.output/probe',
+    outDir: 'dist/probe',
     emptyOutDir: true,
     lib: {
       entry: 'scripts/probe-entry.ts',
@@ -15,5 +15,5 @@ await build({
   },
 });
 console.log(
-  'Wrote .output/probe/probe.js. Paste it into the DevTools console, then run worthItProbe.watch().',
+  'Wrote dist/probe/probe.js. Paste it into the DevTools console, then run worthItProbe.watch().',
 );

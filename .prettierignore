@@ -1,4 +1,4 @@
-.output
+dist
 .wxt
 node_modules
 tests/fixtures

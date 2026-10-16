@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "wxt build && playwright test",
-    "lint:firefox": "wxt build -b firefox && web-ext lint --source-dir .output/firefox-mv3",
+    "lint:firefox": "wxt build -b firefox && web-ext lint --source-dir dist/firefox",
     "postinstall": "wxt prepare",
     "probe": "node scripts/build-probe.mjs",
     "zip:firefox": "wxt zip -b firefox"

@@ -56,7 +56,7 @@ Show the IMDb rating of a movie when the user points at its title on a web page.
 ## Firefox (AMO)
 
 - `data_collection_permissions.required: ["websiteContent"]` is declared in the manifest.
-- Upload the `*-sources.zip` from `npm run zip` with build instructions: `npm ci && npm run zip:firefox`
+- Upload the `dist/worth-it-source-<version>.zip` from `npm run zip` with build instructions: `npm ci && npm run zip:firefox`
   (Node 22+).
 - Linter warnings about `innerHTML` come from Preact's renderer (`dangerouslySetInnerHTML` support),
   which the extension never uses.

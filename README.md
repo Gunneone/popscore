@@ -29,7 +29,7 @@ enough, the year fits and the film isn't obscure, so hovering a "Play" button ne
 card. See `src/detect/` and `src/match/`.
 
 To see what it would detect on any site, without API keys, run `npm run probe`, paste
-`.output/probe/probe.js` into the DevTools console and call `worthItProbe.watch()`.
+`dist/probe/probe.js` into the DevTools console and call `worthItProbe.watch()`.
 
 ## Setup for users
 
@@ -54,8 +54,8 @@ node scripts/make-icons.mjs   # regenerate public/icon/*.png
 ```
 
 Load it by hand: `npm run build`, then in Chrome open `chrome://extensions`, enable Developer mode,
-**Load unpacked** → `.output/chrome-mv3`. In Firefox open `about:debugging` → This Firefox →
-**Load Temporary Add-on** → `.output/firefox-mv3/manifest.json` (`npm run build:firefox` first).
+**Load unpacked** → `dist/chrome`. In Firefox open `about:debugging` → This Firefox →
+**Load Temporary Add-on** → `dist/firefox/manifest.json` (`npm run build:firefox` first).
 
 ### Layout
 
@@ -74,8 +74,8 @@ Load it by hand: `npm run build`, then in Chrome open `chrome://extensions`, ena
 
 See `store/listing.md` for listing text, permission justifications and the data disclosure, and
 `PRIVACY.md` for the privacy policy (host it publicly, e.g. via GitHub Pages, and link it in both
-stores). Run `npm run zip`, then upload `.output/*-chrome.zip` to the Chrome Web Store and
-`.output/*-firefox.zip` plus `*-sources.zip` to addons.mozilla.org.
+stores). Run `npm run zip`, then upload `dist/worth-it-chrome-<version>.zip` to the Chrome Web Store and
+`dist/worth-it-firefox-<version>.zip` plus `dist/worth-it-source-<version>.zip` to addons.mozilla.org.
 
 Movie data from [TMDB](https://www.themoviedb.org/) (this product uses the TMDB API but is not
 endorsed or certified by TMDB) and the [OMDb API](https://www.omdbapi.com/) (CC BY-NC 4.0, so the
