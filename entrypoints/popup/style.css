@@ -1,0 +1,58 @@
+body {
+  width: 300px;
+  background: var(--panel);
+}
+
+.popup {
+  padding: 14px 16px;
+}
+
+.popup header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.popup h1 {
+  font-size: 16px;
+}
+
+.popup section {
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.popup section p {
+  margin: 8px 0 0;
+}
+
+.setup p {
+  margin: 0 0 8px !important;
+}
+
+.popup footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.error {
+  color: var(--bad);
+}
+
+kbd {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--chip);
+  font: inherit;
+  font-size: 11px;
+}

@@ -1,0 +1,178 @@
+.options {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px 48px;
+}
+
+.options header {
+  margin-bottom: 20px;
+}
+
+.options h1 {
+  font-size: 26px;
+}
+
+.options header p {
+  margin: 4px 0 0;
+}
+
+.welcome {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.panel {
+  margin-bottom: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+}
+
+.panel h3 {
+  margin-top: 18px;
+  font-size: 14px;
+}
+
+.panel > p {
+  margin: 8px 0 12px;
+}
+
+.step {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--panel);
+  font-size: 12px;
+}
+
+.key {
+  margin-bottom: 16px;
+}
+
+.key ol {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+}
+
+.key input {
+  display: block;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.sites {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px 16px;
+}
+
+.extra {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.extra li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.btn.small {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.field {
+  margin-top: 12px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.row input[type='range'] {
+  flex: 1;
+  max-width: 320px;
+  accent-color: var(--accent);
+}
+
+.num {
+  width: 64px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.sample {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--chip);
+  font-weight: 700;
+}
+
+.sample.good {
+  color: var(--good);
+}
+
+.sample.okay {
+  color: var(--okay);
+}
+
+.sample.bad {
+  color: var(--bad);
+}
+
+.privacy {
+  margin-top: 16px;
+}
+
+.options footer {
+  margin-top: 24px;
+}
+
+kbd {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--chip);
+  font: inherit;
+  font-size: 12px;
+}
+
+@media (max-width: 480px) {
+  .options {
+    padding-top: 20px;
+  }
+
+  .panel {
+    padding: 16px;
+  }
+}

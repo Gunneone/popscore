@@ -1,0 +1,5 @@
+.output
+.wxt
+node_modules
+tests/fixtures
+package-lock.json

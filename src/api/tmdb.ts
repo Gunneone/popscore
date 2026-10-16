@@ -1,0 +1,112 @@
+import type { MovieDetails, MovieSummary } from '../types';
+import { ApiError } from './errors';
+
+const API = 'https://api.themoviedb.org/3';
+export const TMDB_IMAGE = 'https://image.tmdb.org/t/p/';
+
+interface TmdbSearchResult {
+  id: number;
+  title: string;
+  original_title: string;
+  release_date?: string;
+  poster_path?: string | null;
+  popularity?: number;
+  vote_count?: number;
+}
+
+interface TmdbMovie {
+  id: number;
+  title: string;
+  original_title: string;
+  release_date?: string;
+  runtime?: number | null;
+  genres?: { id: number; name: string }[];
+  overview?: string;
+  poster_path?: string | null;
+  imdb_id?: string | null;
+}
+
+/** v4 "API Read Access Tokens" are JWTs; v3 "API Keys" are 32 hex chars. */
+function isBearerToken(key: string): boolean {
+  return key.startsWith('eyJ') && key.length > 60;
+}
+
+async function tmdbGet<T>(
+  path: string,
+  params: Record<string, string | number | undefined>,
+  key: string,
+): Promise<T> {
+  const url = new URL(API + path);
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== '') url.searchParams.set(k, String(v));
+  }
+  const headers: Record<string, string> = { accept: 'application/json' };
+  if (isBearerToken(key)) headers.authorization = `Bearer ${key}`;
+  else url.searchParams.set('api_key', key);
+
+  let res: Response;
+  try {
+    res = await fetch(url, { headers });
+  } catch {
+    throw new ApiError('offline', 'TMDB is unreachable');
+  }
+  if (res.status === 401) throw new ApiError('bad-tmdb-key', 'TMDB rejected the API key');
+  if (res.status === 429) throw new ApiError('rate-limit', 'TMDB rate limit');
+  if (!res.ok) throw new ApiError('unknown', `TMDB responded ${res.status}`);
+  return (await res.json()) as T;
+}
+
+function yearOf(date?: string): number | undefined {
+  const y = date ? Number.parseInt(date.slice(0, 4), 10) : NaN;
+  return Number.isFinite(y) ? y : undefined;
+}
+
+export async function searchMovies(
+  query: string,
+  opts: { language?: string; year?: number },
+  key: string,
+): Promise<MovieSummary[]> {
+  const data = await tmdbGet<{ results: TmdbSearchResult[] }>(
+    '/search/movie',
+    { query, language: opts.language, year: opts.year, include_adult: 'false' },
+    key,
+  );
+  return data.results.slice(0, 10).map((r) => ({
+    tmdbId: r.id,
+    title: r.title,
+    originalTitle: r.original_title,
+    releaseDate: r.release_date || undefined,
+    year: yearOf(r.release_date),
+    posterPath: r.poster_path ?? null,
+    popularity: r.popularity ?? 0,
+    voteCount: r.vote_count ?? 0,
+  }));
+}
+
+export async function movieDetails(
+  tmdbId: number,
+  language: string,
+  key: string,
+): Promise<MovieDetails> {
+  const m = await tmdbGet<TmdbMovie>(`/movie/${tmdbId}`, { language }, key);
+  return {
+    tmdbId: m.id,
+    title: m.title,
+    originalTitle: m.original_title,
+    year: yearOf(m.release_date),
+    runtime: m.runtime || null,
+    genres: (m.genres ?? []).map((g) => g.name),
+    overview: m.overview ?? '',
+    posterPath: m.poster_path ?? null,
+    imdbId: m.imdb_id || null,
+  };
+}
+
+export async function testTmdbKey(key: string): Promise<'ok' | 'invalid' | 'error'> {
+  try {
+    await tmdbGet('/configuration', {}, key);
+    return 'ok';
+  } catch (err) {
+    return err instanceof ApiError && err.code === 'bad-tmdb-key' ? 'invalid' : 'error';
+  }
+}

@@ -1,0 +1,264 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { ApiError } from '../src/api/errors';
+import type { RatingsProvider } from '../src/api/provider';
+import { clearCache } from '../src/cache';
+import { lookup, pickMovie, tmdbLanguage } from '../src/lookup';
+import { getUsage, updateSettings } from '../src/settings';
+import type { LookupRequest, MovieDetails, MovieSummary } from '../src/types';
+
+const summary = (
+  tmdbId: number,
+  title: string,
+  year: number,
+  extra: Partial<MovieSummary> = {},
+) => ({
+  tmdbId,
+  title,
+  originalTitle: title,
+  year,
+  releaseDate: `${year}-06-01`,
+  posterPath: `/p${tmdbId}.jpg`,
+  popularity: 20,
+  voteCount: 5000,
+  ...extra,
+});
+
+const SEARCH: Record<string, MovieSummary[]> = {
+  'Die Unfassbaren': [
+    summary(75656, 'Die Unfassbaren - Now You See Me', 2013, { originalTitle: 'Now You See Me' }),
+    summary(291805, 'Die Unfassbaren 2', 2016),
+  ],
+  Dune: [
+    summary(438631, 'Dune', 2021, { voteCount: 13000 }),
+    summary(841, 'Dune', 1984, { voteCount: 2700 }),
+  ],
+  Play: [summary(9, 'Play', 2011, { voteCount: 2 })],
+};
+
+const details = (id: number): MovieDetails => {
+  const s = Object.values(SEARCH)
+    .flat()
+    .find((m) => m.tmdbId === id)!;
+  return {
+    tmdbId: id,
+    title: s.originalTitle,
+    originalTitle: s.originalTitle,
+    year: s.year,
+    runtime: 115,
+    genres: ['Thriller', 'Crime'],
+    overview: 'Plot.',
+    posterPath: s.posterPath ?? null,
+    imdbId: `tt${id}`,
+  };
+};
+
+function makeProvider(overrides: Partial<RatingsProvider> = {}) {
+  return {
+    search: vi.fn(async (q: string) => SEARCH[q] ?? []),
+    details: vi.fn(async (id: number) => details(id)),
+    rating: vi.fn(async () => ({ rating: 7.2, votes: 712_345 })),
+    ...overrides,
+  } satisfies RatingsProvider;
+}
+
+const req = (text: string, extra: Partial<LookupRequest> = {}): LookupRequest => ({
+  candidates: [{ text, weight: 1, source: 'test' }],
+  pageLang: 'de-DE',
+  cinema: false,
+  mode: 'auto',
+  ...extra,
+});
+
+const fetchPoster = async (p: string) => `data:image/jpeg;base64,${p}`;
+
+beforeEach(async () => {
+  fakeBrowser.reset();
+  await clearCache();
+});
+
+describe('lookup', () => {
+  it('matches a German title and returns the IMDb rating', async () => {
+    const provider = makeProvider();
+    const result = await lookup(req('Die Unfassbaren'), { provider, fetchPoster });
+    expect(result).toMatchObject({
+      status: 'match',
+      query: 'Die Unfassbaren',
+      picked: false,
+      movie: {
+        tmdbId: 75656,
+        title: 'Now You See Me',
+        rating: 7.2,
+        votes: 712_345,
+        imdbId: 'tt75656',
+      },
+    });
+    expect(provider.search).toHaveBeenCalledWith('Die Unfassbaren', {
+      language: 'de-DE',
+      year: undefined,
+    });
+    if (result.status === 'match') {
+      expect(result.alternatives.map((a) => a.tmdbId)).toEqual([291805]);
+      expect(result.movie.poster).toBe('data:image/jpeg;base64,/p75656.jpg');
+    }
+  });
+
+  it('caches searches, details and ratings', async () => {
+    const provider = makeProvider();
+    await lookup(req('Dune'), { provider, fetchPoster });
+    await lookup(req('Dune'), { provider, fetchPoster });
+    expect(provider.search).toHaveBeenCalledTimes(1);
+    expect(provider.details).toHaveBeenCalledTimes(1);
+    expect(provider.rating).toHaveBeenCalledTimes(1);
+    expect((await getUsage()).omdbCalls).toBe(1);
+  });
+
+  it('retries without the year when the year hint finds nothing', async () => {
+    const provider = makeProvider({
+      search: vi.fn(async (q: string, o: { year?: number }) => (o.year ? [] : (SEARCH[q] ?? []))),
+    });
+    const result = await lookup(
+      { ...req('Dune'), candidates: [{ text: 'Dune', year: 2020, weight: 1, source: 't' }] },
+      { provider, fetchPoster },
+    );
+    expect(provider.search).toHaveBeenCalledTimes(2);
+    expect(result.status).toBe('match');
+  });
+
+  it('stays quiet in auto mode for non-movies, but answers in manual mode', async () => {
+    const provider = makeProvider();
+    expect((await lookup(req('Trending Now'), { provider })).status).toBe('nomatch');
+    expect((await lookup(req('Play'), { provider })).status).toBe('nomatch');
+    const manual = await lookup(req('Play', { mode: 'manual' }), { provider, fetchPoster });
+    expect(manual.status).toBe('match');
+  });
+
+  it('tries the next candidate when the first one finds nothing', async () => {
+    const provider = makeProvider();
+    const result = await lookup(
+      {
+        ...req('x'),
+        candidates: [
+          { text: 'Mehr erfahren', weight: 1.1, source: 'aria-label' },
+          { text: 'Dune', weight: 0.9, source: 'heading' },
+        ],
+      },
+      { provider, fetchPoster },
+    );
+    expect(result).toMatchObject({ status: 'match', query: 'Dune', movie: { tmdbId: 438631 } });
+  });
+
+  it('reports missing keys without calling anything', async () => {
+    const result = await lookup(req('Dune'));
+    expect(result).toEqual({ status: 'error', error: 'missing-keys' });
+  });
+
+  it('maps API errors', async () => {
+    const provider = makeProvider({
+      search: vi.fn(async () => {
+        throw new ApiError('bad-tmdb-key', 'nope');
+      }),
+    });
+    expect(await lookup(req('Dune'), { provider })).toEqual({
+      status: 'error',
+      error: 'bad-tmdb-key',
+    });
+  });
+
+  it('still shows the movie when only the rating fails', async () => {
+    const provider = makeProvider({
+      rating: vi.fn(async () => {
+        throw new ApiError('rate-limit', 'Request limit reached!');
+      }),
+    });
+    const result = await lookup(req('Dune'), { provider, fetchPoster });
+    expect(result).toMatchObject({
+      status: 'match',
+      ratingError: 'rate-limit',
+      movie: { rating: null, title: 'Dune' },
+    });
+  });
+
+  it('remembers a "Wrong movie?" pick for that text', async () => {
+    const provider = makeProvider();
+    const first = await lookup(req('Dune'), { provider, fetchPoster });
+    expect(first.status === 'match' && first.movie.tmdbId).toBe(438631);
+
+    const picked = await pickMovie(
+      'Dune',
+      841,
+      first.status === 'match' ? first.alternatives : [],
+      {
+        provider,
+        fetchPoster,
+      },
+    );
+    expect(picked).toMatchObject({ status: 'match', picked: true, movie: { tmdbId: 841 } });
+
+    const again = await lookup(req('dune'), { provider, fetchPoster });
+    expect(again).toMatchObject({ status: 'match', picked: true, movie: { tmdbId: 841 } });
+    if (again.status === 'match') expect(again.alternatives.map((a) => a.tmdbId)).toEqual([438631]);
+  });
+
+  it('uses the stored keys when no provider is injected', async () => {
+    await updateSettings({ tmdbKey: 'k', omdbKey: 'o' });
+    const fetchMock = vi.fn(async (url: URL | string) => {
+      const u = new URL(String(url));
+      if (u.pathname === '/3/search/movie') {
+        return Response.json({
+          results: [
+            {
+              id: 1,
+              title: 'Dune',
+              original_title: 'Dune',
+              release_date: '2021-09-15',
+              vote_count: 13000,
+            },
+          ],
+        });
+      }
+      if (u.pathname === '/3/movie/1') {
+        return Response.json({
+          id: 1,
+          title: 'Dune',
+          original_title: 'Dune',
+          release_date: '2021-09-15',
+          runtime: 155,
+          genres: [{ id: 1, name: 'Science Fiction' }],
+          overview: 'Spice.',
+          poster_path: null,
+          imdb_id: 'tt1160419',
+        });
+      }
+      if (u.hostname === 'www.omdbapi.com') {
+        expect(u.searchParams.get('apikey')).toBe('o');
+        return Response.json({ Response: 'True', imdbRating: '8.0', imdbVotes: '1,012,345' });
+      }
+      throw new Error(`unexpected ${u}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await lookup(req('Dune'));
+    expect(result).toMatchObject({
+      status: 'match',
+      movie: {
+        rating: 8,
+        votes: 1_012_345,
+        runtime: 155,
+        genres: ['Science Fiction'],
+        poster: null,
+      },
+    });
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('tmdbLanguage', () => {
+  it.each([
+    ['de', 'de-DE'],
+    ['de-DE', 'de-DE'],
+    ['en', 'en-US'],
+    ['en-GB', 'en-GB'],
+    ['', 'en-US'],
+    ['fr', 'fr-FR'],
+  ])('%j -> %j', (input, out) => expect(tmdbLanguage(input)).toBe(out));
+});
