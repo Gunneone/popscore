@@ -50,6 +50,8 @@ const details = (id: number): MovieDetails => {
     overview: 'Plot.',
     posterPath: s.posterPath ?? null,
     imdbId: `tt${id}`,
+    tmdbRating: 7.5,
+    tmdbVotes: 812,
   };
 };
 
@@ -179,6 +181,27 @@ describe('lookup', () => {
     });
   });
 
+  it("keeps TMDB's score for the card when OMDb has no IMDb rating yet", async () => {
+    const provider = makeProvider({ rating: vi.fn(async () => ({ rating: null, votes: null })) });
+    const result = await lookup(req('Dune'), { provider, fetchPoster });
+    expect(result).toMatchObject({
+      status: 'match',
+      movie: { rating: null, tmdbRating: 7.5, tmdbVotes: 812 },
+    });
+    expect(result.status === 'match' && result.ratingError).toBeFalsy();
+  });
+
+  it('re-checks a missing IMDb rating after a few hours, not days', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-17T12:00:00Z') });
+    const rating = vi.fn(async () => ({ rating: null, votes: null }));
+    const provider = makeProvider({ rating });
+    await lookup(req('Dune'), { provider, fetchPoster });
+    vi.setSystemTime(new Date('2026-10-17T19:00:00Z'));
+    await lookup(req('Dune'), { provider, fetchPoster });
+    expect(rating).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
   it('remembers a "Wrong movie?" pick for that text', async () => {
     const provider = makeProvider();
     const first = await lookup(req('Dune'), { provider, fetchPoster });
@@ -228,6 +251,8 @@ describe('lookup', () => {
           overview: 'Spice.',
           poster_path: null,
           imdb_id: 'tt1160419',
+          vote_average: 7.8,
+          vote_count: 13000,
         });
       }
       if (u.hostname === 'www.omdbapi.com') {
@@ -243,6 +268,8 @@ describe('lookup', () => {
       movie: {
         rating: 8,
         votes: 1_012_345,
+        tmdbRating: 7.8,
+        tmdbVotes: 13000,
         runtime: 155,
         genres: ['Science Fiction'],
         poster: null,

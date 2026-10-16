@@ -38,6 +38,9 @@ export interface MovieDetails {
   overview: string;
   posterPath: string | null;
   imdbId: string | null;
+  /** TMDB's own user score (0..10), shown when OMDb has no IMDb rating yet. */
+  tmdbRating: number | null;
+  tmdbVotes: number;
 }
 
 export interface ImdbRating {

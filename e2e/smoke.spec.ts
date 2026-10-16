@@ -56,3 +56,20 @@ test('shows the IMDb rating for a hovered poster', async () => {
   await expect(card).toHaveAttribute('data-state', 'match', { timeout: 10_000 });
   await page.screenshot({ path: 'test-results/card.png' });
 });
+
+test('falls back to the TMDB score for a new release OMDb has no rating for yet', async () => {
+  const { TMDB_KEY, OMDB_KEY } = process.env;
+  test.skip(
+    !TMDB_KEY || !OMDB_KEY,
+    'Set TMDB_KEY and OMDB_KEY (e.g. in .env) to run the live lookup.',
+  );
+  await setKeys(TMDB_KEY!, OMDB_KEY!);
+
+  const page = await context.newPage();
+  await page.goto(PAGE_URL);
+  await page.locator('#poster-digger').hover();
+  await expect(page.locator('worth-it-card')).toHaveAttribute('data-state', 'match', {
+    timeout: 10_000,
+  });
+  await page.screenshot({ path: 'test-results/card-digger.png' });
+});

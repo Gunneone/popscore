@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { cacheGet, cacheSet, clearCache, pruneCache } from '../src/cache';
 import { findDefaultSite, matchesPattern, originPattern } from '../src/sites';
-import { formatRuntime, formatVotes, verdict } from '../src/ui/format';
+import { displayScore, formatRuntime, formatVotes, verdict } from '../src/ui/format';
 import { placeCard } from '../src/ui/position';
 
 describe('sites', () => {
@@ -64,6 +64,22 @@ describe('format', () => {
     expect(formatVotes(2_000_000)).toBe('2M');
     expect(formatRuntime(166)).toBe('2h 46m');
     expect(formatRuntime(45)).toBe('45m');
+  });
+
+  it('prefers the IMDb rating and falls back to a TMDB score with enough votes', () => {
+    expect(displayScore({ rating: 8, votes: 100, tmdbRating: 7, tmdbVotes: 50 })).toEqual({
+      value: 8,
+      votes: 100,
+      source: 'IMDb',
+    });
+    expect(displayScore({ rating: null, votes: null, tmdbRating: 7.5, tmdbVotes: 812 })).toEqual({
+      value: 7.5,
+      votes: 812,
+      source: 'TMDB',
+    });
+    expect(displayScore({ rating: null, votes: null, tmdbRating: 9, tmdbVotes: 2 })).toBeNull();
+    // Cached entries from older versions have no TMDB fields.
+    expect(displayScore({ rating: null, votes: null })).toBeNull();
   });
 
   it('maps ratings to verdicts', () => {

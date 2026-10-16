@@ -16,6 +16,7 @@ Worth It? shows a small card with the IMDb rating when you rest your pointer on 
 poster on cinema and streaming websites:
 
 • IMDb score with a traffic-light color (green / amber / red, adjustable) and vote count
+• Brand-new releases without an IMDb rating yet show TMDB's user score, clearly labelled
 • Poster, year, genres, runtime and a short plot
 • Works on Netflix, Prime Video, Disney+, Cinestar, CinemaxX, Cineplex, UCI and Kinopolis out of the box
 • Switch it on for any other site from the toolbar button, or hold Alt (⌥) to look up any title anywhere

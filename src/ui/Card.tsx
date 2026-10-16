@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { normalizeTitle } from '../match/normalize';
 import type { LookupError, LookupResult, MovieSummary } from '../types';
-import { formatRuntime, formatVotes, verdict } from './format';
+import { displayScore, formatRuntime, formatVotes, verdict } from './format';
 
 export type CardState = { kind: 'loading' } | { kind: 'result'; result: LookupResult };
 
@@ -97,7 +97,8 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
   const m = result.movie;
   const [open, setOpen] = useState(false);
   const [posterOk, setPosterOk] = useState(true);
-  const v = verdict(m.rating, greenAt, amberAt);
+  const score = displayScore(m);
+  const v = verdict(score?.value ?? null, greenAt, amberAt);
 
   const q = normalizeTitle(result.query);
   const aka =
@@ -118,7 +119,14 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
     popularity: 0,
     voteCount: 0,
   };
-  const ratingNote = result.ratingError ? RATING_ERROR_TEXT[result.ratingError] : undefined;
+  const ratingNote = result.ratingError
+    ? RATING_ERROR_TEXT[result.ratingError]
+    : m.rating === null
+      ? m.imdbId
+        ? 'No IMDb rating yet: OMDb, which supplies it, lags a few weeks behind for new releases.'
+        : "TMDB doesn't link this film to IMDb yet."
+      : undefined;
+  const fallbackNote = score?.source === 'TMDB' ? " Showing TMDB's user score instead." : '';
 
   return (
     <>
@@ -136,16 +144,16 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
           </div>
           <div class={`rating ${v}`}>
             <span class="dot" />
-            {m.rating !== null ? (
+            {score ? (
               <>
-                <span class="score">{m.rating.toFixed(1)}</span>
-                <span class="out">/10 IMDb</span>
-                {m.votes !== null && <span class="votes">· {formatVotes(m.votes)} votes</span>}
+                <span class="score">{score.value.toFixed(1)}</span>
+                <span class="out">/10 {score.source}</span>
+                {score.votes !== null && (
+                  <span class="votes">· {formatVotes(score.votes)} votes</span>
+                )}
               </>
             ) : (
-              <span class="score">
-                {result.ratingError ? 'IMDb rating unavailable' : 'Not yet rated on IMDb'}
-              </span>
+              <span class="score">No rating yet</span>
             )}
           </div>
         </div>
@@ -154,7 +162,8 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
       {m.overview && <p class="plot">{m.overview}</p>}
       {ratingNote && (
         <div class="note">
-          {ratingNote}{' '}
+          {ratingNote}
+          {fallbackNote}{' '}
           {result.ratingError === 'bad-omdb-key' && (
             <button class="link" type="button" onClick={props.onOpenSettings}>
               Settings

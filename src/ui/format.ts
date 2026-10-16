@@ -7,6 +7,28 @@ export function verdict(rating: number | null, greenAt: number, amberAt: number)
   return 'bad';
 }
 
+export const MIN_TMDB_VOTES = 5;
+
+export interface DisplayScore {
+  value: number;
+  votes: number | null;
+  source: 'IMDb' | 'TMDB';
+}
+
+/** The IMDb rating if there is one, else TMDB's user score when enough people voted. */
+export function displayScore(m: {
+  rating: number | null;
+  votes: number | null;
+  tmdbRating?: number | null;
+  tmdbVotes?: number;
+}): DisplayScore | null {
+  if (m.rating !== null) return { value: m.rating, votes: m.votes, source: 'IMDb' };
+  if (m.tmdbRating != null && (m.tmdbVotes ?? 0) >= MIN_TMDB_VOTES) {
+    return { value: m.tmdbRating, votes: m.tmdbVotes ?? null, source: 'TMDB' };
+  }
+  return null;
+}
+
 /** 845 -> "845", 41_234 -> "41k", 412_345 -> "412k", 1_234_567 -> "1.2M" */
 export function formatVotes(votes: number): string {
   if (votes < 1000) return String(votes);

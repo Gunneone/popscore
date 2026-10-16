@@ -24,6 +24,8 @@ interface TmdbMovie {
   overview?: string;
   poster_path?: string | null;
   imdb_id?: string | null;
+  vote_average?: number;
+  vote_count?: number;
 }
 
 /** v4 "API Read Access Tokens" are JWTs; v3 "API Keys" are 32 hex chars. */
@@ -99,6 +101,8 @@ export async function movieDetails(
     overview: m.overview ?? '',
     posterPath: m.poster_path ?? null,
     imdbId: m.imdb_id || null,
+    tmdbRating: m.vote_count ? (m.vote_average ?? null) : null,
+    tmdbVotes: m.vote_count ?? 0,
   };
 }
 

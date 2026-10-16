@@ -8,6 +8,8 @@ Prime Video, Disney+). No more opening IMDb in another tab to decide whether a f
   look up any title instantly.
 - The card shows poster, year, a green / amber / red IMDb score with vote count, genres, runtime and
   a short plot.
+- New releases: OMDb's copy of IMDb ratings lags a few weeks behind, so until it has one the card
+  shows TMDB's user score instead, clearly labelled "/10 TMDB".
 - **Wrong movie?** opens the other close matches and a search box; your pick is remembered.
 - Movies only (series are skipped). German titles are understood.
 

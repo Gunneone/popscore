@@ -59,12 +59,19 @@ async function cachedSearch(
   return results;
 }
 
-async function cachedDetails(provider: RatingsProvider, tmdbId: number): Promise<MovieDetails> {
-  const key = `d:${tmdbId}`;
+async function cachedDetails(
+  provider: RatingsProvider,
+  tmdbId: number,
+  now: Date,
+): Promise<MovieDetails> {
+  // "d2": entries from before TMDB scores were stored lack tmdbRating.
+  const key = `d2:${tmdbId}`;
   const hit = await cacheGet<MovieDetails>(key);
   if (hit) return hit;
   const details = await provider.details(tmdbId);
-  await cacheSet(key, details, 30 * DAY);
+  // New films change quickly (IMDb id added, TMDB score moving), so refresh them daily.
+  const recent = details.year === undefined || details.year >= now.getFullYear() - 1;
+  await cacheSet(key, details, recent ? 1 * DAY : 30 * DAY);
   return details;
 }
 
@@ -74,8 +81,8 @@ async function cachedRating(provider: RatingsProvider, imdbId: string): Promise<
   if (hit) return hit;
   await countOmdbCall();
   const rating = await provider.rating(imdbId);
-  // New releases often have no rating yet; check again sooner.
-  await cacheSet(key, rating, rating.rating === null ? 1 * DAY : 3 * DAY);
+  // OMDb lags behind IMDb for new releases; check again soon so the real rating appears early.
+  await cacheSet(key, rating, rating.rating === null ? DAY / 4 : 3 * DAY);
   return rating;
 }
 
@@ -109,7 +116,7 @@ async function buildCard(
   tmdbId: number,
   deps: LookupDeps,
 ): Promise<{ movie: MovieCard; ratingError?: LookupError }> {
-  const details = await cachedDetails(provider, tmdbId);
+  const details = await cachedDetails(provider, tmdbId, deps.now ?? new Date());
   let rating: ImdbRating = { rating: null, votes: null };
   let ratingError: LookupError | undefined;
   if (details.imdbId) {
