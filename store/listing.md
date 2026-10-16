@@ -22,6 +22,7 @@ poster on cinema and streaming websites:
 • Switch it on for any other site from the toolbar button, or hold Alt (⌥) to look up any title anywhere
 • Understands German titles ("Die Unfassbaren" → Now You See Me)
 • "Wrong movie?" lets you pick the right film; your choice is remembered
+• One click to the film on IMDb or Letterboxd (your choice)
 • No account, no tracking. Uses your own free TMDB and OMDb API keys (setup takes ~3 minutes)
 
 Movie data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.

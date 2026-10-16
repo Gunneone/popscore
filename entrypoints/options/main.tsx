@@ -2,7 +2,13 @@ import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import { send } from '@/src/messages';
-import { getSettings, updateSettings, watchSettings, type Settings } from '@/src/settings';
+import {
+  getSettings,
+  updateSettings,
+  watchSettings,
+  type LinkTarget,
+  type Settings,
+} from '@/src/settings';
 import { DEFAULT_SITES } from '@/src/sites';
 import type { KeyTestResult, Usage } from '@/src/types';
 import { verdict } from '@/src/ui/format';
@@ -213,6 +219,11 @@ function Sites({ settings }: { settings: Settings }) {
   );
 }
 
+const LINK_TARGETS: [LinkTarget, string][] = [
+  ['imdb', 'IMDb'],
+  ['letterboxd', 'Letterboxd'],
+];
+
 function CardSettings({ settings }: { settings: Settings }) {
   const sample = [8.5, 6.4, 4.9];
   return (
@@ -275,6 +286,22 @@ function CardSettings({ settings }: { settings: Settings }) {
             <span key={r} class={`sample ${verdict(r, settings.greenAt, settings.amberAt)}`}>
               {r.toFixed(1)}
             </span>
+          ))}
+        </div>
+      </div>
+      <div class="field">
+        <span>“Open on …” link goes to</span>
+        <div class="row">
+          {LINK_TARGETS.map(([value, name]) => (
+            <label key={value}>
+              <input
+                type="radio"
+                name="linkTo"
+                checked={settings.linkTo === value}
+                onChange={() => void updateSettings({ linkTo: value })}
+              />{' '}
+              {name}
+            </label>
           ))}
         </div>
       </div>

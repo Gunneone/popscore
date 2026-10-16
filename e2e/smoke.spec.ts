@@ -27,9 +27,13 @@ test.afterEach(async () => {
   await context.close();
 });
 
-async function setKeys(tmdbKey: string, omdbKey: string) {
+async function setKeys(tmdbKey: string, omdbKey: string, extra: object = {}) {
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
-  await worker.evaluate((settings) => chrome.storage.sync.set({ settings }), { tmdbKey, omdbKey });
+  await worker.evaluate((settings) => chrome.storage.sync.set({ settings }), {
+    tmdbKey,
+    omdbKey,
+    ...extra,
+  });
 }
 
 test('asks for API keys when none are set', async () => {
@@ -72,4 +76,21 @@ test('falls back to the TMDB score for a new release OMDb has no rating for yet'
     timeout: 10_000,
   });
   await page.screenshot({ path: 'test-results/card-digger.png' });
+});
+
+test('links to Letterboxd when chosen in the settings', async () => {
+  const { TMDB_KEY, OMDB_KEY } = process.env;
+  test.skip(
+    !TMDB_KEY || !OMDB_KEY,
+    'Set TMDB_KEY and OMDB_KEY (e.g. in .env) to run the live lookup.',
+  );
+  await setKeys(TMDB_KEY!, OMDB_KEY!, { linkTo: 'letterboxd' });
+
+  const page = await context.newPage();
+  await page.goto(PAGE_URL);
+  await page.locator('#poster-unfassbaren').hover();
+  await expect(page.locator('worth-it-card')).toHaveAttribute('data-state', 'match', {
+    timeout: 10_000,
+  });
+  await page.screenshot({ path: 'test-results/card-letterboxd.png' });
 });

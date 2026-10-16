@@ -1,6 +1,8 @@
 import { browser } from 'wxt/browser';
 import { storage } from 'wxt/utils/storage';
 
+export type LinkTarget = 'imdb' | 'letterboxd';
+
 export interface Settings {
   tmdbKey: string;
   omdbKey: string;
@@ -14,6 +16,8 @@ export interface Settings {
   greenAt: number;
   /** Ratings at or above this (and below greenAt) are amber; below is red. */
   amberAt: number;
+  /** Where the card's "Open on …" link goes. */
+  linkTo: LinkTarget;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -24,6 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dwellMs: 500,
   greenAt: 7,
   amberAt: 6,
+  linkTo: 'imdb',
 };
 
 const settingsItem = storage.defineItem<Partial<Settings>>('sync:settings', { fallback: {} });

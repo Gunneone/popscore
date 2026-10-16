@@ -99,6 +99,7 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
         state={state}
         greenAt={settings.greenAt}
         amberAt={settings.amberAt}
+        linkTo={settings.linkTo}
         onPick={pick}
         onSearch={search}
         onOpenSettings={() => void send({ type: 'openOptions' }).catch(() => {})}

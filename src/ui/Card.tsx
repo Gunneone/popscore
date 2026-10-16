@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { normalizeTitle } from '../match/normalize';
+import type { LinkTarget } from '../settings';
 import type { LookupError, LookupResult, MovieSummary } from '../types';
 import { displayScore, formatRuntime, formatVotes, verdict } from './format';
 
@@ -9,6 +10,7 @@ export interface CardProps {
   state: CardState;
   greenAt: number;
   amberAt: number;
+  linkTo: LinkTarget;
   onPick(query: string, movie: MovieSummary, pool: MovieSummary[]): void;
   onSearch(original: string, text: string): void;
   onOpenSettings(): void;
@@ -119,14 +121,13 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
     popularity: 0,
     voteCount: 0,
   };
-  const ratingNote = result.ratingError
-    ? RATING_ERROR_TEXT[result.ratingError]
-    : m.rating === null
-      ? m.imdbId
-        ? 'No IMDb rating yet: OMDb, which supplies it, lags a few weeks behind for new releases.'
-        : "TMDB doesn't link this film to IMDb yet."
-      : undefined;
-  const fallbackNote = score?.source === 'TMDB' ? " Showing TMDB's user score instead." : '';
+  const ratingNote = result.ratingError ? RATING_ERROR_TEXT[result.ratingError] : undefined;
+  const link =
+    props.linkTo === 'letterboxd'
+      ? { href: `https://letterboxd.com/tmdb/${m.tmdbId}/`, label: 'Letterboxd' }
+      : m.imdbId
+        ? { href: `https://www.imdb.com/title/${m.imdbId}/`, label: 'IMDb' }
+        : null;
 
   return (
     <>
@@ -162,8 +163,7 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
       {m.overview && <p class="plot">{m.overview}</p>}
       {ratingNote && (
         <div class="note">
-          {ratingNote}
-          {fallbackNote}{' '}
+          {ratingNote}{' '}
           {result.ratingError === 'bad-omdb-key' && (
             <button class="link" type="button" onClick={props.onOpenSettings}>
               Settings
@@ -175,14 +175,9 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
         <button class="link" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
           {open ? 'Close ▴' : 'Wrong movie? ▾'}
         </button>
-        {m.imdbId && (
-          <a
-            class="link"
-            href={`https://www.imdb.com/title/${m.imdbId}/`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Open on IMDb ↗
+        {link && (
+          <a class="link" href={link.href} target="_blank" rel="noopener noreferrer">
+            Open on {link.label} ↗
           </a>
         )}
       </div>

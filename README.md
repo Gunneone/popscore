@@ -11,6 +11,7 @@ Prime Video, Disney+). No more opening IMDb in another tab to decide whether a f
 - New releases: OMDb's copy of IMDb ratings lags a few weeks behind, so until it has one the card
   shows TMDB's user score instead, clearly labelled "/10 TMDB".
 - **Wrong movie?** opens the other close matches and a search box; your pick is remembered.
+- The card links to the film on IMDb, or on Letterboxd if you pick that in the settings.
 - Movies only (series are skipped). German titles are understood.
 
 ## How it finds titles without per-site code
