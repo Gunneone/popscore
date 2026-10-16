@@ -11,9 +11,9 @@ import {
 } from '@/src/settings';
 import { DEFAULT_SITES } from '@/src/sites';
 import type { KeyTestResult, Usage } from '@/src/types';
-import { verdict } from '@/src/ui/format';
 import '@/src/ui/pages.css';
 import './style.css';
+import { VerdictSlider } from './VerdictSlider';
 
 const ALL_SITES = { origins: ['<all_urls>'] };
 const OMDB_DAILY_LIMIT = 1000;
@@ -225,7 +225,6 @@ const LINK_TARGETS: [LinkTarget, string][] = [
 ];
 
 function CardSettings({ settings }: { settings: Settings }) {
-  const sample = [8.5, 6.4, 4.9];
   return (
     <section class="panel">
       <h2>
@@ -248,46 +247,11 @@ function CardSettings({ settings }: { settings: Settings }) {
       </div>
       <div class="field">
         <span>Verdict colors</span>
-        <div class="row">
-          <label>
-            Green from{' '}
-            <input
-              class="num"
-              type="number"
-              min={0}
-              max={10}
-              step={0.1}
-              value={settings.greenAt}
-              onChange={(e) => {
-                const greenAt = Number(e.currentTarget.value);
-                void updateSettings({ greenAt, amberAt: Math.min(settings.amberAt, greenAt) });
-              }}
-            />
-          </label>
-          <label>
-            Amber from{' '}
-            <input
-              class="num"
-              type="number"
-              min={0}
-              max={10}
-              step={0.1}
-              value={settings.amberAt}
-              onChange={(e) => {
-                const amberAt = Number(e.currentTarget.value);
-                void updateSettings({ amberAt, greenAt: Math.max(settings.greenAt, amberAt) });
-              }}
-            />
-          </label>
-          <span class="muted small">below is red</span>
-        </div>
-        <div class="row samples">
-          {sample.map((r) => (
-            <span key={r} class={`sample ${verdict(r, settings.greenAt, settings.amberAt)}`}>
-              {r.toFixed(1)}
-            </span>
-          ))}
-        </div>
+        <VerdictSlider
+          amberAt={settings.amberAt}
+          greenAt={settings.greenAt}
+          onChange={(range) => void updateSettings(range)}
+        />
       </div>
       <div class="field">
         <span>“Open on …” link goes to</span>
