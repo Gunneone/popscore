@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { cacheGet, cacheSet, clearCache, pruneCache } from '../src/cache';
-import { findDefaultSite, matchesPattern, originPattern } from '../src/sites';
+import {
+  DEFAULT_SITES,
+  findDefaultSite,
+  matchesPattern,
+  originPattern,
+  REGION_NAMES,
+  siteState,
+} from '../src/sites';
 import { displayScore, formatRuntime, formatVotes, verdict } from '../src/ui/format';
 import { placeCard } from '../src/ui/position';
 
@@ -9,14 +16,41 @@ describe('sites', () => {
   it('matches default sites including subdomains and Prime Video paths', () => {
     expect(findDefaultSite('https://www.netflix.com/browse')?.id).toBe('netflix');
     expect(findDefaultSite('https://www.cinestar.de/kino-berlin/programm')?.kind).toBe('cinema');
-    expect(findDefaultSite('https://www.amazon.de/gp/video/storefront')?.id).toBe(
-      'amazon-de-video',
-    );
-    expect(findDefaultSite('https://www.amazon.de/-/en/gp/video/detail/B0')?.id).toBe(
-      'amazon-de-video',
-    );
+    expect(findDefaultSite('https://www.amazon.de/gp/video/storefront')?.id).toBe('primevideo');
+    expect(findDefaultSite('https://www.amazon.de/-/en/gp/video/detail/B0')?.id).toBe('primevideo');
+    expect(findDefaultSite('https://www.amazon.co.uk/gp/video/detail/B0')?.id).toBe('primevideo');
     expect(findDefaultSite('https://www.amazon.de/dp/B0123')).toBeUndefined();
     expect(findDefaultSite('https://notnetflix.com/')).toBeUndefined();
+  });
+
+  it('limits big multi-purpose domains to their video section', () => {
+    expect(findDefaultSite('https://www.bbc.co.uk/iplayer/episode/m0')?.id).toBe('iplayer');
+    expect(findDefaultSite('https://www.bbc.co.uk/news')).toBeUndefined();
+    expect(findDefaultSite('https://www.srf.ch/play/tv/film')?.id).toBe('srf');
+    expect(findDefaultSite('https://www.srf.ch/news')).toBeUndefined();
+    expect(findDefaultSite('https://www.itv.com/')?.id).toBe('itvx');
+    expect(findDefaultSite('https://www.itv.com/news')).toBeUndefined();
+    expect(findDefaultSite('https://www.fandango.com/movies')?.kind).toBe('cinema');
+    expect(findDefaultSite('https://athome.fandango.com/browse')?.kind).toBe('streaming');
+  });
+
+  it('keeps the catalog consistent: unique ids, valid patterns, no overlapping hosts', () => {
+    const ids = DEFAULT_SITES.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const site of DEFAULT_SITES) {
+      expect(site.region in REGION_NAMES).toBe(true);
+      for (const pattern of site.matches) {
+        expect(pattern).toMatch(/^\*:\/\/(\*\.)?[a-z0-9.-]+\/\S*$/);
+        // A URL of this site, e.g. "*://*.odeon.co.uk/*" -> "https://www.odeon.co.uk/".
+        const [, host, path] = /^\*:\/\/([^/]+)(\/.*)$/.exec(pattern)!;
+        const url = `https://${host.replace(/^\*\./, 'www.')}${path.replace(/\*/g, '')}`;
+        const owners = DEFAULT_SITES.filter((s) => s.matches.some((p) => matchesPattern(url, p)));
+        expect(
+          owners.map((s) => s.id),
+          url,
+        ).toEqual([site.id]);
+      }
+    }
   });
 
   it('handles <all_urls> and builds origin patterns', () => {
@@ -24,6 +58,47 @@ describe('sites', () => {
     expect(matchesPattern('chrome://settings', '<all_urls>')).toBe(false);
     expect(originPattern('https://www.yorck.de/filme?x=1')).toBe('https://www.yorck.de/*');
     expect(originPattern('chrome://extensions')).toBeNull();
+  });
+});
+
+describe('siteState', () => {
+  const own = 'https://www.example-kino.de/*';
+  const base = { disabledSites: [], disabledLists: [], extraSites: [own] };
+
+  it('is on when the site and its list are on', () => {
+    expect(siteState('https://www.odeon.co.uk/films', base)).toMatchObject({
+      list: 'cinema',
+      on: true,
+    });
+    expect(siteState('https://www.example-kino.de/programm', base)).toMatchObject({
+      list: 'custom',
+      pattern: own,
+      on: true,
+    });
+  });
+
+  it('is off when the site is switched off', () => {
+    const s = { ...base, disabledSites: ['odeon', own] };
+    expect(siteState('https://www.odeon.co.uk/', s)).toMatchObject({ siteOn: false, on: false });
+    expect(siteState('https://www.example-kino.de/', s)).toMatchObject({
+      siteOn: false,
+      on: false,
+    });
+  });
+
+  it("is off while its list is paused, keeping the site's own choice", () => {
+    const s = { ...base, disabledLists: ['streaming' as const, 'custom' as const] };
+    expect(siteState('https://www.netflix.com/browse', s)).toMatchObject({
+      listOn: false,
+      siteOn: true,
+      on: false,
+    });
+    expect(siteState('https://www.example-kino.de/', s).on).toBe(false);
+    expect(siteState('https://www.cinestar.de/', s).on).toBe(true);
+  });
+
+  it('knows nothing about other sites', () => {
+    expect(siteState('https://example.org/', base)).toMatchObject({ list: null, on: false });
   });
 });
 

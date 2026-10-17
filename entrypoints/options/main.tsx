@@ -9,10 +9,10 @@ import {
   type LinkTarget,
   type Settings,
 } from '@/src/settings';
-import { DEFAULT_SITES } from '@/src/sites';
 import type { KeyTestResult, Usage } from '@/src/types';
 import '@/src/ui/pages.css';
 import './style.css';
+import { SiteLists } from './SiteLists';
 import { VerdictSlider } from './VerdictSlider';
 
 const ALL_SITES = { origins: ['<all_urls>'] };
@@ -136,13 +136,6 @@ function Sites({ settings }: { settings: Settings }) {
     };
   }, []);
 
-  const toggleSite = (id: string, on: boolean) =>
-    void updateSettings({
-      disabledSites: on
-        ? settings.disabledSites.filter((s) => s !== id)
-        : [...settings.disabledSites, id],
-    });
-
   const toggleAnywhere = (on: boolean) => {
     // Must be called synchronously from the click for the browser to show its prompt.
     const req = on ? browser.permissions.request(ALL_SITES) : browser.permissions.remove(ALL_SITES);
@@ -156,47 +149,9 @@ function Sites({ settings }: { settings: Settings }) {
       </h2>
       <p class="muted">
         On these sites the card opens when you rest the pointer on a title. Holding <kbd>Alt</kbd> (
-        <kbd>⌥</kbd>) shows it right away.
+        <kbd>⌥</kbd>) shows it right away, here and on sites that are switched off.
       </p>
-      <div class="sites">
-        {DEFAULT_SITES.map((s) => (
-          <label class="switch" key={s.id}>
-            <input
-              type="checkbox"
-              checked={!settings.disabledSites.includes(s.id)}
-              onChange={(e) => toggleSite(s.id, e.currentTarget.checked)}
-            />
-            <span>
-              {s.name}{' '}
-              <span class="muted small">{s.kind === 'cinema' ? 'cinema' : 'streaming'}</span>
-            </span>
-          </label>
-        ))}
-      </div>
-
-      <h3>Your sites</h3>
-      {settings.extraSites.length === 0 ? (
-        <p class="muted small">
-          None yet. To add one, open the site and switch it on from the Worth It? toolbar button.
-        </p>
-      ) : (
-        <ul class="extra">
-          {settings.extraSites.map((p) => (
-            <li key={p}>
-              <code>{p.replace(/^https?:\/\//, '').replace(/\/\*$/, '')}</code>
-              <button
-                class="btn small"
-                type="button"
-                onClick={() =>
-                  void updateSettings({ extraSites: settings.extraSites.filter((x) => x !== p) })
-                }
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <SiteLists settings={settings} />
 
       <h3>Every other website</h3>
       <label class="switch">

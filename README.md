@@ -1,11 +1,15 @@
 # Worth It?
 
 A Chrome and Firefox extension that shows a movie's **IMDb rating in a hover card** while you browse
-cinema programmes (Cinestar, CinemaxX, Cineplex, UCI, Kinopolis) and streaming catalogs (Netflix,
-Prime Video, Disney+). No more opening IMDb in another tab to decide whether a film is worth it.
+cinema programmes (CineStar, Odeon, AMC, Hoyts, …) and streaming catalogs (Netflix, Prime Video,
+Disney+, …). No more opening IMDb in another tab to decide whether a film is worth it.
 
 - Rest the pointer on a poster or title for half a second on an enabled site, or hold **Alt (⌥)** to
   look up any title instantly.
+- Works out of the box on 128 cinema and streaming sites in the German- and English-speaking
+  markets (DE, AT, CH, UK, IE, US, CA, AU, NZ), listed in [src/sites.ts](src/sites.ts). In the
+  settings they're grouped into Cinemas, Streaming services and Your sites; each list and each site
+  can be switched off on its own.
 - The card shows poster, year, a green / amber / red IMDb score with vote count, genres, runtime and
   a short plot.
 - New releases: OMDb's copy of IMDb ratings lags a few weeks behind, so until it has one the card

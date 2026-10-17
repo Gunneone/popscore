@@ -4,7 +4,7 @@ import { extractCandidates } from '@/src/detect/extract';
 import { readStructured, type StructuredInfo } from '@/src/detect/structured';
 import { send } from '@/src/messages';
 import { getSettings, watchSettings, type Settings } from '@/src/settings';
-import { DEFAULT_SITE_MATCHES, findDefaultSite, matchesPattern } from '@/src/sites';
+import { DEFAULT_SITE_MATCHES, findDefaultSite, siteState } from '@/src/sites';
 import type { LookupResult, MovieSummary } from '@/src/types';
 import { Card, type CardState } from '@/src/ui/Card';
 import { CardHost } from '@/src/ui/host';
@@ -45,11 +45,7 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
   };
 
   /** Dwell-to-show is on for enabled sites; everywhere else only Alt-hover works. */
-  const autoEnabled = () => {
-    const site = findDefaultSite(location.href);
-    if (site) return !settings.disabledSites.includes(site.id);
-    return settings.extraSites.some((p) => matchesPattern(location.href, p));
-  };
+  const autoEnabled = () => siteState(location.href, settings).on;
   const isCinema = () =>
     findDefaultSite(location.href)?.kind === 'cinema' || getStructured().hasScreenings;
   const pageLang = () =>

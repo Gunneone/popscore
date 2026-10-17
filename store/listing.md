@@ -18,7 +18,7 @@ poster on cinema and streaming websites:
 • IMDb score with a traffic-light color (green / amber / red, adjustable) and vote count
 • Brand-new releases without an IMDb rating yet show TMDB's user score, clearly labelled
 • Poster, year, genres, runtime and a short plot
-• Works on Netflix, Prime Video, Disney+, Cinestar, CinemaxX, Cineplex, UCI and Kinopolis out of the box
+• Works out of the box on 128 cinema and streaming sites in Germany, Austria, Switzerland, the UK, Ireland, the US, Canada, Australia and New Zealand: Netflix, Prime Video, Disney+, CineStar, Odeon, AMC, Hoyts and many more
 • Switch it on for any other site from the toolbar button, or hold Alt (⌥) to look up any title anywhere
 • Understands German titles ("Die Unfassbaren" → Now You See Me)
 • "Wrong movie?" lets you pick the right film; your choice is remembered

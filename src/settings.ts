@@ -1,14 +1,17 @@
 import { browser } from 'wxt/browser';
 import { storage } from 'wxt/utils/storage';
+import type { SiteList, SiteSettings } from './sites';
 
 export type LinkTarget = 'imdb' | 'letterboxd';
 
-export interface Settings {
+export interface Settings extends SiteSettings {
   tmdbKey: string;
   omdbKey: string;
-  /** Ids of default sites (see sites.ts) where auto-hover is switched off. */
+  /** Default site ids (see sites.ts) or extra site patterns where auto-hover is switched off. */
   disabledSites: string[];
-  /** Extra sites with auto-hover, as origin patterns like "https://www.yorck.de/*". */
+  /** Site lists switched off as a whole. */
+  disabledLists: SiteList[];
+  /** Sites the user added, as origin patterns like "https://www.example.de/*". */
   extraSites: string[];
   /** How long the pointer has to rest on a title before the card opens (auto mode). */
   dwellMs: number;
@@ -24,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tmdbKey: '',
   omdbKey: '',
   disabledSites: [],
+  disabledLists: [],
   extraSites: [],
   dwellMs: 500,
   greenAt: 7,
@@ -107,7 +111,9 @@ export async function completePendingSite(): Promise<void> {
   if (!pattern) return;
   if (!(await browser.permissions.contains({ origins: [pattern] }))) return;
   const s = await getSettings();
-  if (!s.extraSites.includes(pattern))
-    await updateSettings({ extraSites: [...s.extraSites, pattern] });
+  await updateSettings({
+    extraSites: s.extraSites.includes(pattern) ? s.extraSites : [...s.extraSites, pattern],
+    disabledSites: s.disabledSites.filter((id) => id !== pattern),
+  });
   await pendingSiteItem.setValue('');
 }

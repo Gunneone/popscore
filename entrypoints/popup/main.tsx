@@ -10,9 +10,15 @@ import {
   updateSettings,
   type Settings,
 } from '@/src/settings';
-import { findDefaultSite, originPattern, type SiteDef } from '@/src/sites';
+import { originPattern, siteState, type SiteList } from '@/src/sites';
 import '@/src/ui/pages.css';
 import './style.css';
+
+const LIST_NAMES: Record<SiteList, string> = {
+  cinema: 'Cinemas',
+  streaming: 'Streaming services',
+  custom: 'Your sites',
+};
 
 interface TabInfo {
   id: number;
@@ -39,28 +45,24 @@ function Popup() {
 
   if (!settings) return null;
   const ready = hasKeys(settings);
-  const site: SiteDef | undefined = tab ? findDefaultSite(tab.url) : undefined;
+  const state = tab ? siteState(tab.url, settings) : null;
+  const site = state?.site;
   const pattern = tab ? originPattern(tab.url) : null;
-  const enabled = site
-    ? !settings.disabledSites.includes(site.id)
-    : !!pattern && settings.extraSites.includes(pattern);
+  // A paused list wins over the site's own switch; resuming it is done in Settings.
+  const paused = !!state?.list && !state.listOn;
 
   const toggle = (on: boolean) => {
     setError('');
-    if (site) {
+    // Built-in sites and sites the user already added are switched off, not removed.
+    const key = site?.id ?? state?.pattern;
+    if (key) {
       const disabledSites = on
-        ? settings.disabledSites.filter((id) => id !== site.id)
-        : [...settings.disabledSites, site.id];
+        ? settings.disabledSites.filter((k) => k !== key)
+        : [...settings.disabledSites, key];
       void updateSettings({ disabledSites }).then(setSettings);
       return;
     }
-    if (!pattern || !tab) return;
-    if (!on) {
-      void updateSettings({ extraSites: settings.extraSites.filter((p) => p !== pattern) }).then(
-        setSettings,
-      );
-      return;
-    }
+    if (!pattern || !tab || !on) return;
     // The permission request must happen synchronously inside the click handler.
     void pendingSiteItem.setValue(pattern);
     browser.permissions.request({ origins: [pattern] }).then(
@@ -107,13 +109,27 @@ function Popup() {
             <label class="switch">
               <input
                 type="checkbox"
-                checked={enabled}
+                checked={!!state?.on}
+                disabled={paused}
                 onChange={(e) => toggle(e.currentTarget.checked)}
               />
               <span>
                 Show ratings when I rest on a title on <b>{site?.name ?? tab.host}</b>
               </span>
             </label>
+            {paused && (
+              <p class="small muted">
+                {LIST_NAMES[state!.list!]} are switched off in{' '}
+                <button
+                  class="link"
+                  type="button"
+                  onClick={() => void browser.runtime.openOptionsPage()}
+                >
+                  Settings
+                </button>
+                .
+              </p>
+            )}
             {error && <p class="small error">{error}</p>}
           </>
         ) : (
