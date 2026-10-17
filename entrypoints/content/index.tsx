@@ -206,9 +206,10 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
       memo[mode].set(anchor, pending);
     }
 
-    // A skeleton while we wait. In auto mode only for strong title signals, so non-titles don't flash.
+    // A skeleton while we wait, only when asked (Alt-hover). On dwell the card appears once there's
+    // a match: TV shows, events and other non-films would otherwise flash an empty card.
     clearTimeout(skeletonTimer);
-    if (mode === 'manual' || candidates[0].weight >= 0.9) {
+    if (mode === 'manual') {
       const id = seq;
       skeletonTimer = setTimeout(() => id === seq && show({ kind: 'loading' }), SKELETON_DELAY_MS);
     } else {

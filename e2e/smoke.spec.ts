@@ -36,6 +36,23 @@ async function setKeys(tmdbKey: string, omdbKey: string, extra: object = {}) {
   });
 }
 
+/** Answers TMDB inside the extension's service worker: no results, after `delayMs`. */
+async function mockTmdbNoResults(delayMs: number) {
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  await worker.evaluate((delay) => {
+    const g = globalThis as unknown as { fetch: typeof fetch };
+    const real = g.fetch.bind(globalThis);
+    g.fetch = async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (!url.startsWith('https://api.themoviedb.org/')) return real(input, init);
+      await new Promise((r) => setTimeout(r, delay));
+      return new Response(JSON.stringify({ results: [] }), {
+        headers: { 'content-type': 'application/json' },
+      });
+    };
+  }, delayMs);
+}
+
 test('asks for API keys when none are set', async () => {
   const page = await context.newPage();
   await page.goto(PAGE_URL);
@@ -93,4 +110,34 @@ test('links to Letterboxd when chosen in the settings', async () => {
     timeout: 10_000,
   });
   await page.screenshot({ path: 'test-results/card-letterboxd.png' });
+});
+
+test('dwelling on a TV show never shows a card, not even a loading one', async () => {
+  // A slow lookup that finds no film: the card used to show its skeleton, then vanish.
+  await setKeys('tmdb-mock', 'omdb-mock');
+  await mockTmdbNoResults(600);
+
+  const page = await context.newPage();
+  await page.goto(PAGE_URL);
+  // The card's shadow root is closed, but its host element and data-state live in the page DOM.
+  await page.evaluate(() => {
+    const states: string[] = [];
+    (window as unknown as { cardStates: string[] }).cardStates = states;
+    new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        const el = m.target as HTMLElement;
+        if (el.tagName === 'WORTH-IT-CARD' && el.dataset.state) states.push(el.dataset.state);
+      }
+    }).observe(document.documentElement, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-state'],
+    });
+  });
+  await page.locator('#tile-show').hover();
+  await page.waitForTimeout(2500);
+  const states = await page.evaluate(
+    () => (window as unknown as { cardStates: string[] }).cardStates,
+  );
+  expect(states).toEqual([]);
 });
