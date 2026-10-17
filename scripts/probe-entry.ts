@@ -1,6 +1,6 @@
 // Debug helper: exposes the title detector on `window.worthItProbe` so it can be tried on any site
 // from the DevTools console, without API keys. Built by `npm run probe`.
-import { extractCandidates } from '../src/detect/extract';
+import { extractCandidates, inPageChrome } from '../src/detect/extract';
 import { readStructured } from '../src/detect/structured';
 
 function scan(el: Element = document.activeElement ?? document.body) {
@@ -20,4 +20,6 @@ function watch() {
   });
 }
 
-Object.assign(window, { worthItProbe: { scan, watch, extractCandidates, readStructured } });
+Object.assign(window, {
+  worthItProbe: { scan, watch, extractCandidates, readStructured, inPageChrome },
+});

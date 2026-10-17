@@ -96,7 +96,10 @@ export function titleSimilarity(a: string, b: string): number {
   let sim = diceCoefficient(cx, cy);
   // One title is the other plus a subtitle ("Die Unfassbaren" vs "Die Unfassbaren - Now You See Me").
   // Usually the same film, but an exact title match elsewhere in the results still ranks higher.
-  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
-  if (long.startsWith(short + ' ')) sim = Math.max(sim, 0.8 + 0.2 * (short.length / long.length));
+  // The longer one has to break there ("Family Guy Presents: It's a Trap!" is no "Family Guy").
+  const [short, long, longRaw] = x.length <= y.length ? [x, y, b] : [y, x, a];
+  const head = digitsForNumbers(normalizeTitle(longRaw.split(/\s[-–—|]\s|:\s|\s\(/)[0]));
+  if (long.startsWith(short + ' ') && head === short)
+    sim = Math.max(sim, 0.8 + 0.2 * (short.length / long.length));
   return differentNumbers ? Math.min(sim, 0.7) : sim;
 }

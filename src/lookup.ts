@@ -168,8 +168,18 @@ export async function lookup(req: LookupRequest, deps: LookupDeps = {}): Promise
         };
       }
 
-      const results = await cachedSearch(provider, cand.text, cand.year, language);
-      const scored = rankResults(cand.text, cand.year, results, { cinema: req.cinema, now });
+      // TMDB's year filter would hide the film when a soft year is wrong, so it only ranks.
+      const results = await cachedSearch(
+        provider,
+        cand.text,
+        cand.softYear ? undefined : cand.year,
+        language,
+      );
+      const scored = rankResults(cand.text, cand.year, results, {
+        cinema: req.cinema,
+        now,
+        softYear: cand.softYear,
+      });
       if (scored.length && (!best || scored[0].score > best.scored[0].score)) {
         best = { query: cand.text, scored };
       }

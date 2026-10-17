@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { extractCandidates } from '../src/detect/extract';
+import { extractCandidates, inPageChrome, titleFromUrl } from '../src/detect/extract';
 import { readStructured } from '../src/detect/structured';
 
 function setBody(html: string) {
@@ -93,6 +93,39 @@ describe('extractCandidates', () => {
     expect(texts(q('time'))).toEqual([]);
   });
 
+  it("uses the film link's URL when the banner only has a tagline (cinecitta.de)", () => {
+    setBody(`
+      <div class="slider">
+        <a href="/film/avengers-doomsday/"><img src="a.jpg" alt="Dein Date mit Dr. Doom!"></a>
+        <a href="/film/dune-part-three/"><img src="b.jpg" alt="Auf nach Arrakis!"></a>
+      </div>`);
+    expect(texts(q('img'))).toContain('avengers doomsday');
+  });
+
+  it('ignores a heading that names a row of tiles (filmingo.ch)', () => {
+    setBody(`
+      <section>
+        <div class="row-head"><h2>Entertainment</h2><a href="/all">See all</a></div>
+        <ul class="row">
+          <li><a href="/film/a"><img alt="Ex Libris"></a></li>
+          <li><a href="/film/b"><img alt="Primavera"></a></li>
+          <li><a href="/film/c"><img alt="Ish"></a></li>
+        </ul>
+      </section>`);
+    expect(texts(q('h2'))).toEqual([]);
+  });
+
+  it('keeps a hero heading that has a description under it', () => {
+    setBody(`
+      <div class="hero"><h2>Street Fighter</h2><p>In 1993, estranged Street Fighters Ryu and Ken are thrown back into combat.</p></div>
+      <ul class="row">
+        <li><a href="/film/a"><img alt="Wildwood"></a></li>
+        <li><a href="/film/b"><img alt="Verity"></a></li>
+        <li><a href="/film/c"><img alt="Whalefall"></a></li>
+      </ul>`);
+    expect(texts(q('h2'))[0]).toBe('Street Fighter');
+  });
+
   it('does not pick a title from a whole list', () => {
     setBody(`<section><h2>Dune</h2><h2>Wicked</h2><h2>Barbie</h2></section>`);
     expect(texts(q('section'))).toEqual([]);
@@ -110,7 +143,7 @@ describe('extractCandidates', () => {
     setBody(`<div class="film"><h1>Dune: Part Two</h1></div>`);
     const structured = readStructured(document);
     const [top] = extractCandidates(q('h1'), { structured });
-    expect(top).toMatchObject({ text: 'Dune: Part Two', year: 2024 });
+    expect(top).toMatchObject({ text: 'Dune: Part Two', year: 2024, softYear: true });
   });
 });
 
@@ -127,4 +160,60 @@ describe('readStructured', () => {
     ]);
     expect(info.hasScreenings).toBe(false);
   });
+});
+
+describe('inPageChrome', () => {
+  it("treats the site's navigation and footer as chrome", () => {
+    setBody(`
+      <header id="banner"><a href="/" id="logo">Hoyts</a><nav><a id="menu" href="/movies">Movies</a></nav></header>
+      <main><section><header id="hero"><h1>Street Fighter</h1></header>
+        <article><a id="tile" href="/movies/wildwood"><img alt="Wildwood"></a><footer id="tile-footer">PG · 2h</footer></article>
+      </section></main>
+      <footer><h4>About Us</h4><a id="careers" href="/careers">Careers</a></footer>`);
+    expect(inPageChrome(q('#menu'))).toBe(true);
+    expect(inPageChrome(q('#logo'))).toBe(true);
+    expect(inPageChrome(q('#careers'))).toBe(true);
+    expect(inPageChrome(q('#hero h1'))).toBe(false);
+    expect(inPageChrome(q('#tile img'))).toBe(false);
+    expect(inPageChrome(q('#tile-footer'))).toBe(false);
+  });
+
+  it('recognizes menus built without nav elements (werstreamt.es, filmfriend.de, filmingo.ch)', () => {
+    setBody(`
+      <header><div class="row"><ul class="inline-list"><li><a id="a" href="/service/">Service</a></li><li><a href="/x">X</a></li></ul></div></header>
+      <navigation-bar><a id="b" href="/collections">Collections</a></navigation-bar>
+      <div class="header"><div class="header__navbar"><a id="c" href="/en/entertainment">Entertainment</a></div></div>
+      <div class="main-menu__sections"><a id="d" href="/x">Kids</a></div>
+      <div class="site-footer"><a id="e" href="/about">About</a></div>
+      <div class="card"><div class="card-footer" id="f">Wildwood</div></div>
+      <div class="swiper-navigation"><button id="g">›</button></div>`);
+    for (const id of ['a', 'b', 'c', 'd', 'e']) expect(inPageChrome(q(`#${id}`)), id).toBe(true);
+    expect(inPageChrome(q('#f'))).toBe(false);
+    expect(inPageChrome(q('#g'))).toBe(false);
+  });
+
+  it('does not treat a header without navigation as chrome', () => {
+    setBody(`<header class="hero"><h2>Dune: Part Three</h2></header>`);
+    expect(inPageChrome(q('h2'))).toBe(false);
+  });
+});
+
+describe('titleFromUrl', () => {
+  const base = 'https://www.example.de/';
+  it.each([
+    ['/kino-dortmund/film/primetime', 'primetime'],
+    ['/film/avengers-doomsday/', 'avengers doomsday'],
+    ['/movies/12345-dune-part-two/tickets', 'dune part two'],
+    ['/filme/shaun-das-schaf-spuk-im-kuerbisfeld-2026', 'shaun das schaf spuk im kuerbisfeld'],
+    ['https://www.cinemaxx.de/film/street-fighter_a1b2c3d4e5', 'street fighter'],
+  ])('%j -> %j', (href, title) => {
+    expect(titleFromUrl(href, base)).toBe(title);
+  });
+
+  it.each(['/title/81234567', '/film?category=now', '/programm/heute', '/films/', '/'])(
+    'ignores %j',
+    (href) => {
+      expect(titleFromUrl(href, base)).toBeNull();
+    },
+  );
 });

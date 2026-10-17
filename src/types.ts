@@ -2,6 +2,11 @@ export interface Candidate {
   /** Cleaned title text, ready to search. */
   text: string;
   year?: number;
+  /**
+   * The year came from the page's structured data, which sites often fill with the date they
+   * added the film rather than its release: a ranking hint only, never a reason to reject.
+   */
+  softYear?: boolean;
   /** Higher is more trustworthy (0..~1.5). */
   weight: number;
   source: string;

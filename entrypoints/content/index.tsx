@@ -1,6 +1,6 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
-import { extractCandidates } from '@/src/detect/extract';
+import { extractCandidates, inPageChrome } from '@/src/detect/extract';
 import { readStructured, type StructuredInfo } from '@/src/detect/structured';
 import { send } from '@/src/messages';
 import { getSettings, watchSettings, type Settings } from '@/src/settings';
@@ -172,6 +172,8 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
 
   function trigger(target: Element, mode: Mode) {
     if (host.owns(target) || isEditable(target)) return;
+    // Menus and footers are full of words that happen to be film titles ("About Us", "Home").
+    if (mode === 'auto' && inPageChrome(target)) return;
     const candidates = extractCandidates(target, {
       structured: getStructured(),
       viewport: { width: innerWidth, height: innerHeight },

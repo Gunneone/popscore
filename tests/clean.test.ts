@@ -39,13 +39,40 @@ describe('cleanTitle', () => {
     // Seen on cinemaxx.de and cineplex.de:
     ['SPARKLE PREVIEW: Der perfekte Urlaub', 'Der perfekte Urlaub'],
     ['Mehr über Street Fighter', 'Street Fighter'],
+    // Seen on landmarktheatres.com:
+    ['See trailer of the movie - Clayface', 'Clayface'],
+    ['Watch trailer for Wicker', 'Wicker'],
     ['Banner zu Street Fighter', 'Street Fighter'],
     ['Banner zur Emotions Preview: Der perfekte Urlaub', 'Der perfekte Urlaub'],
     ['Mission: Impossible', 'Mission: Impossible'],
+    // Seen on uci-kinowelt.de:
+    ['UCI KidsClub Frühstückskino: Marsupilami', 'Marsupilami'],
+    // Seen on harkins.com:
+    ['On-Screen Captions: Sense and Sensibility', 'Sense and Sensibility'],
+    // Seen on ipic.com, landmarktheatres.com and eventcinemas.com.au:
+    ['Street Fighter Movie Poster', 'Street Fighter'],
+    ['Movie poster for Whalefall', 'Whalefall'],
+    ['CLAYFACE A FILM BY JAMES WATKINS', 'CLAYFACE'],
+    ['Heldin – ein Film von Petra Volpe', 'Heldin'],
+    ['SENSE AND SENSIBILITY PG', 'SENSE AND SENSIBILITY'],
+    ['Verity MA15+', 'Verity'],
+    ['Malcolm X', 'Malcolm X'],
+    ['Men in Black', 'Men in Black'],
+    // Seen on rakuten.tv:
+    ['toy-story-5 - Banner', 'toy story 5'],
+    ['Last Man Down - movies', 'Last Man Down'],
+    // Seen on netzkino.de and srf.ch:
+    ['Movie_43_cover', 'Movie 43'],
+    ['Fast verheiratet – Komödie mit Emily Blunt', 'Fast verheiratet'],
+    ['Mission: Impossible – Dead Reckoning', 'Mission: Impossible – Dead Reckoning'],
+    ['Spider-Man', 'Spider-Man'],
+    ['Sensory Friendly Screening: Wildwood', 'Wildwood'],
+    ['Music and Lyrics', 'Music and Lyrics'],
     ['Dune (Original mit Untertitel)', 'Dune'],
     // Titles that contain screening words but aren't made of them:
     ['Johnny English', 'Johnny English'],
     ['The Original', 'The Original'],
+    ['The Menu', 'The Menu'],
   ])('%j -> %j', (raw, title) => {
     expect(cleanTitle(raw)?.title).toBe(title);
   });
@@ -65,6 +92,12 @@ describe('cleanTitle', () => {
     'S01:E04',
     'Dark (Miniserie)',
     'Jetzt ansehen',
+    // Control labels (a cinestar.de notice's close button matched the film "Close"):
+    'Close',
+    'Schließen',
+    'Menu',
+    'Next',
+    'Zurück',
     'Tickets',
     'Trailer',
     'OmU',
@@ -78,6 +111,21 @@ describe('cleanTitle', () => {
     'English (Subtitled)',
     '3D Dolby Atmos',
     'Premium-Sitze verfügbar',
+    // Genre tags (uci-kinowelt.de: "Familie" matched a 2025 film of that name):
+    'Familie',
+    'Buddy, Comedy, Animation, Fantasy',
+    'Start',
+    'Filme',
+    'More',
+    'Consent',
+    'Entertainment',
+    // myvue.com's cinema picker button matched the film "Go":
+    'GO',
+    'Accept All',
+    'Get Started',
+    'Alle akzeptieren',
+    'Action, Thriller',
+    'Science-Fiction',
     '20:15',
     '12,90 €',
     '166 Min',

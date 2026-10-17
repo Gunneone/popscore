@@ -53,12 +53,19 @@ npm run dev            # Chrome with the extension loaded and hot reload
 npm run dev:firefox    # same for Firefox
 npm test               # unit tests (Vitest)
 npm run e2e            # build + Playwright smoke test (live lookup needs TMDB_KEY/OMDB_KEY in .env)
+npm run e2e:sites      # live check of every built-in site (needs TMDB_KEY; OMDb is mocked), ~20 min
 npm run compile        # typecheck
 npm run lint
 npm run lint:firefox   # Mozilla's add-on linter on the Firefox build
 npm run zip            # store packages for Chrome and Firefox (+ sources zip for AMO)
 node scripts/make-icons.mjs   # regenerate public/icon/*.png
 ```
+
+`npm run e2e:sites` opens every site in [src/sites.ts](src/sites.ts), points at film links (they
+should open a card for that film) and at menus, footers, buttons and headings (they should open
+nothing), and writes `test-results/sites-report.md`. OMDb answers are mocked inside the extension,
+so it spends no OMDb lookups. Sites that block automated browsers or this region are listed as
+skipped, not worked around.
 
 Load it by hand: `npm run build`, then in Chrome open `chrome://extensions`, enable Developer mode,
 **Load unpacked** → `dist/chrome`. In Firefox open `about:debugging` → This Firefox →

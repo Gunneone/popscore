@@ -4,6 +4,8 @@ import { titleSimilarity } from './normalize';
 export interface ScoreContext {
   cinema: boolean;
   now: Date;
+  /** The year hint is unreliable (see Candidate.softYear): it ranks, but doesn't reject. */
+  softYear?: boolean;
 }
 
 export interface Scored {
@@ -38,14 +40,15 @@ export function rankResults(
       titleSimilarity(query, movie.title),
       titleSimilarity(query, movie.originalTitle),
     );
-    const current = ctx.cinema && isCurrent(movie, ctx.now);
+    const recent = isCurrent(movie, ctx.now);
+    const current = ctx.cinema && recent;
 
     let yearScore: number;
     let yearOk = true;
     if (yearHint !== undefined) {
       const delta = movie.year === undefined ? undefined : Math.abs(movie.year - yearHint);
       yearScore = delta === undefined ? 0.3 : delta === 0 ? 1 : delta === 1 ? 0.6 : 0;
-      yearOk = delta !== undefined && delta <= 1;
+      yearOk = !!ctx.softYear || (delta !== undefined && delta <= 1);
     } else if (ctx.cinema) {
       yearScore = current ? 1 : 0.1;
     } else {
@@ -57,7 +60,8 @@ export function rankResults(
     const tvOnly = ctx.cinema && movie.tvMovie === true;
     const score = sim * 0.7 + yearScore * 0.18 + popScore * 0.12 - (tvOnly ? 0.2 : 0);
     // Exact-title hits on obscure films are how UI labels like "Play" turn into false matches.
-    const obscure = movie.voteCount < 15 && !current;
+    // New releases are exempt: they have few votes everywhere, streaming sites included.
+    const obscure = movie.voteCount < 15 && !recent;
     const confident = sim >= CONFIDENT_SIMILARITY && yearOk && !obscure && !tvOnly;
     return { movie, sim, score, confident };
   });

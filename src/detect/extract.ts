@@ -20,6 +20,32 @@ const HEADINGS = 'h1,h2,h3,h4';
 const TITLE_HINTS = '[itemprop="name"],[class*="title" i],[data-title],[data-name]';
 const IGNORED_TAGS = new Set(['HTML', 'BODY', 'MAIN', 'NAV', 'HEADER', 'FOOTER', 'FORM']);
 
+// Film detail links: "/kino-dortmund/film/primetime", "/movies/12345-dune-part-two/tickets".
+const FILM_PATH =
+  /\/(?:film|filme|films|filmdetails?|movie|movies|kinofilm|kinofilme|spielfilm|spielfilme|title|titles)\/(.+)$/i;
+
+/**
+ * The film a detail link points to, from its URL: "/film/avengers-doomsday-2026" -> "avengers
+ * doomsday". Promo banners often carry a tagline as alt text but name the film in the link.
+ */
+export function titleFromUrl(href: string, base = location.href): string | null {
+  let path: string;
+  try {
+    path = decodeURIComponent(new URL(href, base).pathname);
+  } catch {
+    return null;
+  }
+  const m = FILM_PATH.exec(path);
+  const slug = m?.[1]
+    .split('/')
+    .find((s) => /\p{L}{3}/u.test(s))
+    ?.replace(/\.\w+$/, '')
+    .replace(/^\d+[-_]|[-_](?:\d+|(?=[a-z]*\d)[a-z0-9]{8,})$/gi, '')
+    .replace(/[-_+.]+/g, ' ')
+    .trim();
+  return slug && /\p{L}{3}/u.test(slug) ? slug : null;
+}
+
 function visibleText(el: Element): string {
   const html = el as HTMLElement;
   return (typeof html.innerText === 'string' ? html.innerText : el.textContent) ?? '';
@@ -31,6 +57,21 @@ function single(el: Element, selector: string): Element | null {
   return found.length === 1 ? found[0] : null;
 }
 
+/** A heading over a row of tiles ("Neu im Kino", "Entertainment") names the row, not a film. */
+function isSectionHeading(h: Element): boolean {
+  if (h.closest('a[href]')) return false;
+  const tiles = (n: Element | null | undefined) =>
+    !!n && n.querySelectorAll('a[href] img, a[href] picture').length >= 3;
+  if (tiles(h.nextElementSibling)) return true;
+  // A header row holds just the heading and maybe a short "See all" link.
+  const row = h.parentElement;
+  return (
+    !!row &&
+    visibleText(row).trim().length <= visibleText(h).trim().length + 30 &&
+    tiles(row.nextElementSibling)
+  );
+}
+
 function isTooBig(el: Element, depth: number, opts: Options): boolean {
   if (IGNORED_TAGS.has(el.tagName)) return true;
   if (el.querySelectorAll('img').length > 5) return true;
@@ -40,6 +81,33 @@ function isTooBig(el: Element, depth: number, opts: Options): boolean {
   if (depth > 0 && vp && vp.width > 0 && vp.height > 0) {
     const r = el.getBoundingClientRect();
     if (r.width * r.height > (opts.maxAreaRatio ?? 0.6) * vp.width * vp.height) return true;
+  }
+  return false;
+}
+
+// Class or id of a menu or site footer, as a whole name or a BEM part ("header__navbar"). Not a
+// tile's "card-footer" or a carousel's "swiper-navigation".
+const CHROME_NAMES =
+  /(?:^|\s|__)(?:(?:site|page|global|main|app)[-_]?)?(?:navbar|nav-bar|navigation|main-?menu|menu-?bar|footer)(?=$|\s|[-_])/i;
+
+/**
+ * The site's navigation, banner or footer: menus and link lists, not films. Headers and footers
+ * inside an article or section (a film tile's footer, a hero header) don't count, and a header
+ * only counts when it holds the navigation.
+ */
+export function inPageChrome(el: Element): boolean {
+  if (el.closest('nav, [role="navigation"], [role="banner"], [role="contentinfo"]')) return true;
+  const outside = (e: Element) => !e.parentElement?.closest('article, aside, section');
+  const footer = el.closest('footer');
+  if (footer && outside(footer)) return true;
+  const header = el.closest('header');
+  if (header && outside(header) && header.querySelector('nav, [role="navigation"], ul a, ol a'))
+    return true;
+  // Menus built without those elements: <navigation-bar>, class="header__navbar", "main-menu".
+  for (let n: Element | null = el; n && n !== document.body; n = n.parentElement) {
+    if (n.tagName.includes('NAV')) return true;
+    const names = `${typeof n.className === 'string' ? n.className : ''} ${n.id}`;
+    if (CHROME_NAMES.test(names)) return true;
   }
   return false;
 }
@@ -86,8 +154,12 @@ export function extractCandidates(target: Element, opts: Options = {}): Extracte
       const labelled = single(el, '[aria-label]');
       if (labelled) add(labelled.getAttribute('aria-label'), base * 0.85, 'aria-label', el);
       const link = single(el, 'a[href]');
-      if (link) add(visibleText(link) || link.textContent, base * 0.75, 'link', el);
+      if (link) {
+        add(visibleText(link) || link.textContent, base * 0.75, 'link', el);
+        add(titleFromUrl(link.getAttribute('href') ?? ''), base * 0.8, 'url', el);
+      }
     }
+    if (el.tagName === 'A') add(titleFromUrl(el.getAttribute('href') ?? ''), base * 0.8, 'url', el);
 
     if (el.tagName === 'IMG') add(el.getAttribute('alt'), base * 0.95, 'img-alt', el);
     else {
@@ -95,10 +167,11 @@ export function extractCandidates(target: Element, opts: Options = {}): Extracte
       if (img) add(img.getAttribute('alt'), base * 0.9, 'img-alt', el);
     }
 
-    if (el.matches(HEADINGS)) add(visibleText(el), base * 0.95, 'heading', el);
-    else {
+    if (el.matches(HEADINGS)) {
+      if (!isSectionHeading(el)) add(visibleText(el), base * 0.95, 'heading', el);
+    } else {
       const h = single(el, HEADINGS);
-      if (h) add(visibleText(h), base * 0.9, 'heading', el);
+      if (h && !isSectionHeading(h)) add(visibleText(h), base * 0.9, 'heading', el);
     }
 
     const hint = single(el, TITLE_HINTS);
@@ -106,7 +179,7 @@ export function extractCandidates(target: Element, opts: Options = {}): Extracte
       add(visibleText(hint), base * 0.85, 'title-hint', el);
     }
 
-    if (el.tagName === 'A' || depth === 0) {
+    if (el.tagName === 'A' || (depth === 0 && !(el.matches(HEADINGS) && isSectionHeading(el)))) {
       const text = visibleText(el);
       if (text.length <= 120) add(text, base * (el.tagName === 'A' ? 0.75 : 0.7), 'text', el);
     }
@@ -118,7 +191,10 @@ export function extractCandidates(target: Element, opts: Options = {}): Extracte
     const sm = structured.find((m) => normalizeTitle(m.title) === key);
     if (sm) {
       c.weight += 0.2;
-      c.year ??= sm.year;
+      if (c.year === undefined && sm.year !== undefined) {
+        c.year = sm.year;
+        c.softYear = true;
+      }
     }
   }
 

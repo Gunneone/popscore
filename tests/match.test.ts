@@ -31,6 +31,15 @@ describe('titleSimilarity', () => {
     ).toBeGreaterThanOrEqual(CONFIDENT_SIMILARITY);
   });
 
+  it('doesn\'t treat a spin-off\'s title as a subtitle (disneyplus.com: "Family Guy" tile)', () => {
+    expect(titleSimilarity('Family Guy', "Family Guy Presents: It's a Trap!")).toBeLessThan(
+      CONFIDENT_SIMILARITY,
+    );
+    expect(titleSimilarity('Heldin', 'Heldin: Late Shift')).toBeGreaterThanOrEqual(
+      CONFIDENT_SIMILARITY,
+    );
+  });
+
   it('scores different films low', () => {
     expect(titleSimilarity('Barbie', 'Oppenheimer')).toBeLessThan(0.3);
   });
@@ -162,5 +171,10 @@ describe('rankResults', () => {
   it('is not confident when the year hint is far off', () => {
     const [top] = rankResults('Dune', 1999, [dune2021], { cinema: false, now });
     expect(top.confident).toBe(false);
+  });
+
+  it("doesn't reject on a soft year from structured data (sbs.com.au dates films by when it added them)", () => {
+    const [top] = rankResults('Dune', 2026, [dune2021], { cinema: false, now, softYear: true });
+    expect(top.confident).toBe(true);
   });
 });

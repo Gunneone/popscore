@@ -12,13 +12,32 @@ const EVENT =
   '[A-Za-zÄÖÜäöü]+-?Special|Preview|Vorpremiere|Premiere|Vorpremieren|Exklusive Vorpremiere|Fan-?Preview|Fan Event|' +
   'Ladies Night|Ladies Preview|Kinotag|Kino-?Tag|Kinderkino|Kinder-?Kino|Familienkino|Familien-?Matinee|' +
   'Matinee|Mini-?Kino|Seniorenkino|Best of Cinema|Klassiker|Wiederaufführung|Re-?Release|Jubiläum|' +
-  'Event|Live|Special|Double Feature|Marathon|Neu|New|Jetzt im Kino|Now Playing|Bald im Kino|Coming Soon';
+  'Event|Live|Special|Double Feature|Marathon|Neu|New|Jetzt im Kino|Now Playing|Now Showing|' +
+  'Bald im Kino|Coming Soon|Demnächst|Neu im Kino|Top Filme|Alle Filme|All Movies|Kinoprogramm|' +
+  'Programm|Festival|Film ?festival|Filmfest';
 // Streaming-site button and accessibility phrases.
 const ACTION =
   'Watch now|Watch|Play|Resume|Continue watching|Weiterschauen|Jetzt ansehen|Ansehen|Abspielen|' +
   'Trailer ansehen|Watch trailer|Trailer|Teaser|Tickets?|Tickets kaufen|Jetzt buchen|Buchen|' +
   'More info|More information|Mehr Infos|Mehr Informationen|Details|Info|Rent|Buy|Leihen|Kaufen|' +
-  'Add to (?:my )?list|Zur Liste hinzufügen|Meine Liste|My List|Remove from (?:my )?list';
+  'See all|View all|Show all|Alle anzeigen|Alle ansehen|Mehr anzeigen|' +
+  'Add to (?:my )?list|Zur Liste hinzufügen|Meine Liste|My List|Remove from (?:my )?list|' +
+  // Category labels: "Last Man Down - movies".
+  'Movies|Filme|Serien|Series';
+
+// Labels of page controls (close buttons, carousel arrows, menus). Several are also film titles
+// ("Close", "Next", "The Menu"), but as the whole text of an element they're almost always controls.
+const CONTROL =
+  'Close|Schließen|Menu|Menü|Open menu|Menü öffnen|Next|Weiter|Previous|Prev|Vorherige[rs]?|' +
+  'Back|Zurück|Share|Teilen|Search|Suche|Suchen|Log ?in|Sign in|Sign up|Anmelden|Registrieren|' +
+  'Go|Los|Start|Startseite|More|Mehr|Genres?|Consent|Zustimmen|Einwilligen|Agree|I agree|Got it|' +
+  '(?:Accept|Reject|Allow) all|Alle (?:akzeptieren|ablehnen|zulassen)|Get started|Jetzt starten|' +
+  'Loslegen|Subscribe|Abonnieren|Try (?:it )?(?:for )?free|Kostenlos testen|' +
+  'Start (?:your )?free trial|' +
+  'Verstanden|' +
+  'Log ?out|Abmelden|Cancel|Abbrechen|Accept|Akzeptieren|Settings|Einstellungen|Skip|Überspringen|' +
+  'Mute|Unmute|Stummschalten|Pause|Fullscreen|Vollbild|Options|Optionen|Scroll (?:left|right)|' +
+  'Nach (?:links|rechts)';
 
 const FORMAT_SUFFIX = new RegExp(`\\s*(?:[-–—|:/,]\\s*)?\\b(?:${FORMAT})\\s*$`, 'i');
 const FORMAT_PREFIX = new RegExp(`^(?:${FORMAT})\\s*(?:[-–—|:/]\\s*)`, 'i');
@@ -27,12 +46,12 @@ const EVENT_SUFFIX = new RegExp(`\\s*[-–—|:]\\s*(?:${EVENT})\\s*$`, 'i');
 const ACTION_PREFIX = new RegExp(`^(?:${ACTION})\\s*[-–—|:]\\s*`, 'i');
 // Link labels that wrap the title: "Mehr über Street Fighter", "Tickets für Wicked".
 const ACTION_PHRASE_PREFIX =
-  /^(?:Mehr (?:über|zu|zum Film)|More about|More info(?:rmation)? (?:on|about)|Details (?:zu|zum Film|for|about)|Infos? (?:zu|zum Film|über)|Tickets (?:für|zu|for)|Trailer (?:zu|zum Film|for)|Zum Film|Go to)\s+/i;
-// Branded screening series: "SPARKLE PREVIEW: X", "Emotions Preview: X", "Kinopolis Classics: X".
+  /^(?:Mehr (?:über|zu|zum Film)|More about|More info(?:rmation)? (?:on|about)|Details (?:zu|zum Film|for|about)|Infos? (?:zu|zum Film|über)|Tickets (?:für|zu|for)|Trailer (?:zu|zum Film|for)|(?:See|Watch|View|Play) (?:the )?trailer (?:of|for)(?: the (?:movie|film))?\s*[-–:]?|Zum Film|Go to)\s+/i;
+// Branded screening series: "SPARKLE PREVIEW: X", "Kinopolis Classics: X", "UCI KidsClub Frühstückskino: X".
 const SERIES_LABEL_PREFIX =
-  /^(?:[\p{L}'’-]+\s+){0,2}(?:Previews?|Specials?|Events?|Nights?|Sneak|Premieren?|Classics?|Matinee|Reihe)\s*:\s*/iu;
+  /^(?:[\p{L}'’-]+\s+){0,2}(?:Previews?|Specials?|Events?|Nights?|Sneak|Premieren?|Classics?|Matinee|Reihe|\p{L}*kino|\p{L}*club)\s*:\s*/iu;
 const ACTION_SUFFIX = new RegExp(`\\s*[-–—|:,]\\s*(?:${ACTION})\\s*$`, 'i');
-const ACTION_ONLY = new RegExp(`^(?:${ACTION}|${EVENT}|${FORMAT})$`, 'i');
+const ACTION_ONLY = new RegExp(`^(?:${ACTION}|${EVENT}|${FORMAT}|${CONTROL})$`, 'i');
 
 const AGE_RATING =
   /\b(?:FSK|USK|PG|Rated)\s*-?\s*\d{1,2}\b|\bab\s+\d{1,2}(?:\s+Jahren)?\b|\b(?:FSK|ab)\s+0\b/gi;
@@ -43,9 +62,14 @@ const TRAILING_SENTENCE =
   /[.,]\s+(?:\p{Lu}[^.]*\b(?:select|details|press|click|tap|auswählen|wählen|drücken|klicken|tippen|öffnen|open)\b.*)$/iu;
 // Image alt text like "Filmplakat: Dune", "Poster zu Dune", "Dune Poster".
 const IMAGE_PREFIX =
-  /^(?:Film|Kino|Werbe)?(?:plakat|poster|banner|cover|bild|artwork|key ?art|thumbnail|vorschaubild|boxart)(?:\s+(?:zu|zur|zum|von|für|zum Film|for|of|from))?\s*[:\-–]?\s+/i;
+  /^(?:(?:Film|Kino|Werbe|Movie)\s?)?(?:plakat|poster|banner|cover|bild|artwork|key ?art|thumbnail|vorschaubild|boxart)(?:\s+(?:zu|zur|zum|von|für|zum Film|for|of|from))?\s*[:\-–]?\s+/i;
 const IMAGE_SUFFIX =
-  /\s*[-–:]?\s*\b(?:Film|Kino)?(?:plakat|poster|cover|artwork|key ?art|thumbnail|boxart)$/i;
+  /\s*[-–:]?\s*\b(?:(?:Film|Kino|Movie)\s?)?(?:plakat|poster|banner|cover|artwork|key ?art|thumbnail|boxart)$/i;
+// Credits after the title: "CLAYFACE A FILM BY JAMES WATKINS", "Heldin – ein Film von Petra Volpe".
+const CREDIT_SUFFIX =
+  /\s*[-–—|,]?\s+(?:an?|ein)\s+(?:film|movie)\s+(?:by|from|von)\s+.+$|\s*[-–—|,]?\s+(?:directed by|regie:?)\s+.+$/i;
+// Classification codes cinemas print after the title (UK, AU, US): "SENSE AND SENSIBILITY PG".
+const RATING_SUFFIX = /\s+(?:PG-?13|PG|NC-17|MA ?15\+|R ?18\+|M|G|R|CTC|12A|15A|U|TBC)$/;
 // "Sneak Preview", "CineSneak OV: ...": the film is a secret, nothing to look up.
 const SECRET_SCREENING = /^(?:\p{L}*\s?sneak\b|überraschungsfilm|surprise movie|mystery movie)/iu;
 // Times, prices, runtimes, scores and short numbers. (3+ digit numbers stay: "1917", "300".)
@@ -74,8 +98,26 @@ const SCREENING_WORD = new RegExp(
     'sprache|untertitel|untertiteln|untertitelt|ut|subtitled|subtitles|subs|dubbed|' +
     '2d|3d|hfr|imax|4dx|screenx|dolby|atmos|laser|premium|deluxe|recliner|barrierefrei|' +
     'audiodeskription|sitze|sitzplätze|plätze|seats|verfügbar|available|ausverkauft|' +
-    'restplätze|wenige|freie|mit|with|ohne|without|und|and|in' +
+    'restplätze|wenige|freie|mit|with|ohne|without|und|and|in|' +
+    // Accessible screenings: "On-Screen Captions", "Sensory Friendly", "Audio Described".
+    'on|screen|open|captions?|captioned|sensory|friendly|relaxed|autism|audio|described|' +
+    'screenings?|vorstellung|hörfilm' +
     ')$',
+);
+
+// Genre tags on tiles ("Familie", "Action, Thriller"). A few films share these names, but a tile's
+// genre chip is far more common than a film called "Familie".
+const GENRES =
+  'action|abenteuer|adventure|animation|animationsfilm|anime|biografie|biopic|biography|comedy|komödie|tragikomödie|crime|krimi|doku|dokumentation|dokumentarfilm|documentary|drama|familie|familienfilm|family|fantasy|horror|kinderfilm|kids|buddy|superhero|superhelden|liebesfilm|romance|romantik|musical|musik|music|mystery|science|fiction|sci|fi|thriller|psychothriller|western|kriegsfilm|historienfilm|arthouse|kurzfilm|satire|' +
+  // Category names: "Entertainment", "Comedies, Love stories, Road movies".
+  'entertainment|unterhaltung|comedies|komödien|dramas|thrillers|documentaries|dokus|' +
+  'dokumentarfilme|krimis|horrorfilme|actionfilme|animationsfilme|kinderfilme|liebesfilme|' +
+  'abenteuerfilme';
+const GENRE_WORD = new RegExp(`^(?:${GENRES})$`);
+// "Fast verheiratet – Komödie mit Emily Blunt", "Nostalgia | Thriller-Drama".
+const GENRE_SUFFIX = new RegExp(
+  `\\s+[-–—|]\\s+(?:${GENRES})(?:[-\\s](?:${GENRES}))*(?:\\s+(?:mit|with|von|by)\\s+.+)?$`,
+  'i',
 );
 
 function isScreeningLabel(s: string): boolean {
@@ -83,7 +125,7 @@ function isScreeningLabel(s: string): boolean {
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
     .filter(Boolean);
-  return words.length > 0 && words.every((w) => SCREENING_WORD.test(w));
+  return words.length > 0 && words.every((w) => SCREENING_WORD.test(w) || GENRE_WORD.test(w));
 }
 
 const ENTITIES: Record<string, string> = {
@@ -134,6 +176,13 @@ export function cleanTitle(raw: string): CleanTitle | null {
   s = s.replace(/\s*[([][^()[\]]{0,40}[)\]]/g, ' ');
   s = s.replace(AGE_RATING, ' ').replace(/\s+/g, ' ').trim();
 
+  // Alt text that is a file name: "Movie_43_cover".
+  if (!s.includes(' ') && s.includes('_')) s = s.replace(/_+/g, ' ');
+
+  // "On-Screen Captions: Sense and Sensibility", "OmU: Dune": a label made of screening words.
+  const labelled = /^([^:]{2,40}):\s+(.+)$/.exec(s);
+  if (labelled && isScreeningLabel(labelled[1])) s = labelled[2];
+
   s = stripRepeatedly(
     s,
     FORMAT_SUFFIX,
@@ -146,8 +195,14 @@ export function cleanTitle(raw: string): CleanTitle | null {
     SERIES_LABEL_PREFIX,
     IMAGE_PREFIX,
     IMAGE_SUFFIX,
+    CREDIT_SUFFIX,
+    RATING_SUFFIX,
+    GENRE_SUFFIX,
     /^[\s"'„“”‚‘’«»\-–—|:•·,]+|[\s"'„“”‚‘’«»\-–—|:•·,]+$/g,
   );
+
+  // Alt text that is a URL slug: "toy-story-5".
+  if (/^[a-z0-9]+(?:-[a-z0-9]+)+$/.test(s)) s = s.replace(/-/g, ' ');
 
   if (s.length < 2 || s.length > 80) return null;
   if (!/[\p{L}\p{N}]/u.test(s)) return null;

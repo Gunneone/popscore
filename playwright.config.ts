@@ -11,6 +11,10 @@ if (existsSync('.env')) {
 
 export default defineConfig({
   testDir: 'e2e',
+  // The live check of all sites has its own config (playwright.sites.config.ts).
+  testIgnore: ['live/**'],
+  // Playwright empties this folder on every run; keep it apart from test-results/sites.
+  outputDir: 'test-results/playwright',
   timeout: 30_000,
   workers: 1,
   reporter: 'list',
