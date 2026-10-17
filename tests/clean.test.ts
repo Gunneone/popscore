@@ -42,6 +42,10 @@ describe('cleanTitle', () => {
     ['Banner zu Street Fighter', 'Street Fighter'],
     ['Banner zur Emotions Preview: Der perfekte Urlaub', 'Der perfekte Urlaub'],
     ['Mission: Impossible', 'Mission: Impossible'],
+    ['Dune (Original mit Untertitel)', 'Dune'],
+    // Titles that contain screening words but aren't made of them:
+    ['Johnny English', 'Johnny English'],
+    ['The Original', 'The Original'],
   ])('%j -> %j', (raw, title) => {
     expect(cleanTitle(raw)?.title).toBe(title);
   });
@@ -64,6 +68,16 @@ describe('cleanTitle', () => {
     'Tickets',
     'Trailer',
     'OmU',
+    // Version, language, format and seat labels (cinestar.de: "Original (Untertitel)"):
+    'Original (Untertitel)',
+    'Original',
+    'Deutsch',
+    'Englisch mit deutschen Untertiteln',
+    'OV mit dt. UT',
+    '2D,English,OmU (Original mit Untertitel)',
+    'English (Subtitled)',
+    '3D Dolby Atmos',
+    'Premium-Sitze verfügbar',
     '20:15',
     '12,90 €',
     '166 Min',

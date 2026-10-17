@@ -53,10 +53,12 @@ export function rankResults(
     }
 
     const popScore = Math.min(1, Math.log10(1 + movie.voteCount) / 4);
-    const score = sim * 0.7 + yearScore * 0.18 + popScore * 0.12;
+    // Cinemas don't show TV movies; matching one usually means a page label was read as a title.
+    const tvOnly = ctx.cinema && movie.tvMovie === true;
+    const score = sim * 0.7 + yearScore * 0.18 + popScore * 0.12 - (tvOnly ? 0.2 : 0);
     // Exact-title hits on obscure films are how UI labels like "Play" turn into false matches.
     const obscure = movie.voteCount < 15 && !current;
-    const confident = sim >= CONFIDENT_SIMILARITY && yearOk && !obscure;
+    const confident = sim >= CONFIDENT_SIMILARITY && yearOk && !obscure && !tvOnly;
     return { movie, sim, score, confident };
   });
   return scored.sort((a, b) => b.score - a.score);

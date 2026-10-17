@@ -50,7 +50,41 @@ const IMAGE_SUFFIX =
 const SECRET_SCREENING = /^(?:\p{L}*\s?sneak\b|überraschungsfilm|surprise movie|mystery movie)/iu;
 // Times, prices, runtimes, scores and short numbers. (3+ digit numbers stay: "1917", "300".)
 const NOT_A_TITLE =
-  /^\d{1,2}[:.]\d{2}\b|€|\$\s*\d|\bmin\.?$|^\d+\s*min\b|^\d+[.,]\d+$|^\d{1,2}$|^\p{P}+$/iu;
+  /^\d{1,2}[:.]\d{2}(?!\d)|€|\$\s*\d|\bmin\.?$|^\d+\s*min\b|^\d+[.,]\d+$|^\d{1,2}$|^\p{P}+$/iu;
+
+// Words that describe a screening rather than name a film: version, language, subtitles, format,
+// seats. Text made only of these is a label ("Original (Untertitel)", "OV mit dt. UT", "Deutsch").
+const LANGUAGES_DE =
+  'deutsch|englisch|französisch|spanisch|italienisch|japanisch|koreanisch|türkisch|polnisch|' +
+  'russisch|ukrainisch|arabisch|chinesisch|kantonesisch|persisch|kurdisch|griechisch|' +
+  'portugiesisch|schwedisch|dänisch|norwegisch|finnisch|niederländisch|ungarisch|tschechisch|' +
+  'rumänisch|kroatisch|serbisch|hebräisch';
+const LANGUAGES_EN =
+  'english|german|french|spanish|italian|japanese|korean|turkish|polish|russian|ukrainian|' +
+  'arabic|chinese|mandarin|cantonese|persian|farsi|kurdish|greek|portuguese|swedish|danish|' +
+  'norwegian|finnish|dutch|hungarian|czech|romanian|croatian|serbian|hebrew|hindi|tamil|' +
+  'telugu|malayalam|kannada|punjabi|bengali';
+const SCREENING_WORD = new RegExp(
+  '^(?:' +
+    // German language adjectives take endings: "deutsche", "englischen".
+    `(?:${LANGUAGES_DE})(?:e|en|er|es)?|${LANGUAGES_EN}|` +
+    'dt|engl|eng|franz|frz|span|ital|jap|kor|türk|poln|russ|ukr|arab|' +
+    'original|originale|originalversion|originalfassung|originalton|originalsprache|orig|' +
+    'ov|of|omu|omdu|omeu|omenglu|df|synchron|synchronisiert|synchronfassung|fassung|version|' +
+    'sprache|untertitel|untertiteln|untertitelt|ut|subtitled|subtitles|subs|dubbed|' +
+    '2d|3d|hfr|imax|4dx|screenx|dolby|atmos|laser|premium|deluxe|recliner|barrierefrei|' +
+    'audiodeskription|sitze|sitzplätze|plätze|seats|verfügbar|available|ausverkauft|' +
+    'restplätze|wenige|freie|mit|with|ohne|without|und|and|in' +
+    ')$',
+);
+
+function isScreeningLabel(s: string): boolean {
+  const words = s
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+  return words.length > 0 && words.every((w) => SCREENING_WORD.test(w));
+}
 
 const ENTITIES: Record<string, string> = {
   amp: '&',
@@ -117,7 +151,7 @@ export function cleanTitle(raw: string): CleanTitle | null {
 
   if (s.length < 2 || s.length > 80) return null;
   if (!/[\p{L}\p{N}]/u.test(s)) return null;
-  if (ACTION_ONLY.test(s) || NOT_A_TITLE.test(s)) return null;
+  if (ACTION_ONLY.test(s) || NOT_A_TITLE.test(s) || isScreeningLabel(s)) return null;
   if (s.split(' ').length > 12) return null;
   return year === undefined ? { title: s } : { title: s, year };
 }

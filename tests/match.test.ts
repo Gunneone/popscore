@@ -120,6 +120,45 @@ describe('rankResults', () => {
     expect(top.confident).toBe(false);
   });
 
+  it('does not match TV movies on cinema pages', () => {
+    const tvMovie = movie({
+      tmdbId: 5,
+      title: 'The Original+',
+      year: 2026,
+      releaseDate: '2026-06-01',
+      voteCount: 0,
+      tvMovie: true,
+    });
+    const [top] = rankResults('Original', undefined, [tvMovie], { cinema: true, now });
+    expect(top.confident).toBe(false);
+    // Elsewhere (streaming sites) they're fair game.
+    const remake = { ...tvMovie, voteCount: 500 };
+    expect(
+      rankResults('The Original+', undefined, [remake], { cinema: false, now })[0].confident,
+    ).toBe(true);
+  });
+
+  it('ranks a theatrical film above a TV movie of the same name on cinema pages', () => {
+    const film = movie({
+      tmdbId: 6,
+      title: 'Primetime',
+      year: 2026,
+      releaseDate: '2026-09-24',
+      voteCount: 20,
+    });
+    const tv = movie({
+      tmdbId: 7,
+      title: 'Primetime',
+      year: 2026,
+      releaseDate: '2026-02-01',
+      voteCount: 30,
+      tvMovie: true,
+    });
+    const [top] = rankResults('Primetime', undefined, [tv, film], { cinema: true, now });
+    expect(top.movie.tmdbId).toBe(6);
+    expect(top.confident).toBe(true);
+  });
+
   it('is not confident when the year hint is far off', () => {
     const [top] = rankResults('Dune', 1999, [dune2021], { cinema: false, now });
     expect(top.confident).toBe(false);

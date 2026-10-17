@@ -74,6 +74,25 @@ describe('extractCandidates', () => {
     expect(texts(q('.movie a'))).toEqual(['Wicked']);
   });
 
+  it("ignores a showtime group's version label (cinestar.de)", () => {
+    setBody(`
+      <div class="ShowtimeDayView"><div class="day">Heute</div>
+        <div class="ShowtimeGroupView open">
+          <div class="attributes">
+            <div class="group-title">Original (Untertitel)</div>
+            <img src="gb.svg" alt="English">
+            <img src="2d.svg" alt="2D,English,OmU (Original mit Untertitel)">
+            <img src="omu.svg" alt="2D,English,OmU (Original mit Untertitel)">
+          </div>
+          <div class="times"><div class="buttonOutter">
+            <a class="timeButton" href="/t"><time>23:00</time><span class="recliner">Premium-Sitze<br>verfügbar</span></a>
+          </div></div>
+        </div>
+      </div>`);
+    expect(texts(q('.group-title'))).toEqual([]);
+    expect(texts(q('time'))).toEqual([]);
+  });
+
   it('does not pick a title from a whole list', () => {
     setBody(`<section><h2>Dune</h2><h2>Wicked</h2><h2>Barbie</h2></section>`);
     expect(texts(q('section'))).toEqual([]);

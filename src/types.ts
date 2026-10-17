@@ -26,6 +26,8 @@ export interface MovieSummary {
   posterPath?: string | null;
   popularity: number;
   voteCount: number;
+  /** TMDB files it under "TV Movie": made for television, so not on at a cinema. */
+  tvMovie?: boolean;
 }
 
 export interface MovieDetails {

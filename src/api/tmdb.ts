@@ -12,7 +12,10 @@ interface TmdbSearchResult {
   poster_path?: string | null;
   popularity?: number;
   vote_count?: number;
+  genre_ids?: number[];
 }
+
+const TV_MOVIE_GENRE = 10770;
 
 interface TmdbMovie {
   id: number;
@@ -82,6 +85,7 @@ export async function searchMovies(
     posterPath: r.poster_path ?? null,
     popularity: r.popularity ?? 0,
     voteCount: r.vote_count ?? 0,
+    tvMovie: r.genre_ids?.includes(TV_MOVIE_GENRE) ?? false,
   }));
 }
 

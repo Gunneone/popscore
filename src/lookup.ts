@@ -43,7 +43,8 @@ async function cachedSearch(
   year: number | undefined,
   language: string,
 ): Promise<MovieSummary[]> {
-  const key = `s:${language}:${year ?? ''}:${normalizeTitle(query)}`;
+  // "s2": entries from before TV movies were flagged lack tvMovie.
+  const key = `s2:${language}:${year ?? ''}:${normalizeTitle(query)}`;
   const hit = await cacheGet<MovieSummary[]>(key);
   if (hit) return hit;
   let results = await provider.search(query, { language, year });
