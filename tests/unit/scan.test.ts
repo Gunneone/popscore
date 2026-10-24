@@ -46,6 +46,19 @@ describe('findSeeds', () => {
     expect(findSeeds(document.body).map((s) => s.id)).toEqual(['poster']);
   });
 
+  it("skips links about the page's own film", () => {
+    history.replaceState(null, '', '/film/scott-pilgrim-vs-the-world/');
+    document.body.innerHTML = `
+      <img id="poster" src="p.jpg" alt="Scott Pilgrim vs. the World">
+      <a href="/film/scott-pilgrim-vs-the-world/cast/">Cast</a>
+      <a href="/film/scott-pilgrim-vs-the-world/ratings/">3.9</a>
+      <a href="/someone/film/scott-pilgrim-vs-the-world/">Review by someone</a>
+      <a href="#">Mobile site</a>
+      <a id="similar" href="/film/high-fidelity/">High Fidelity</a>`;
+    expect(findSeeds(document.body).map((s) => s.id)).toEqual(['poster', 'similar']);
+    history.replaceState(null, '', '/');
+  });
+
   it('only returns what it has not looked at before', () => {
     document.body.innerHTML = `<a href="/film/dune"><img id="one" src="d.jpg" alt="Dune"></a>`;
     const checked = new WeakSet<Element>();

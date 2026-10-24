@@ -41,7 +41,7 @@ function inImageTile(link: Element): boolean {
  * Elements that may stand for one movie or show, without any site-specific selectors: every image
  * outside menus and footers (posters and tiles; the caller skips ones too small once they're laid
  * out), and links to a film's or show's page whose tile has no image (text listings, CSS
- * background posters).
+ * background posters), except ones about the film the page is about.
  *
  * Every element looked at goes into `checked` and is skipped next time, so rescanning a page that
  * keeps changing only looks at what's new.
@@ -52,8 +52,14 @@ export function findSeeds(root: ParentNode, checked = new WeakSet<Element>()): E
   for (const img of Array.from(root.querySelectorAll('img'))) {
     if (fresh(img) && !inPageChrome(img)) seeds.push(img);
   }
+  // Links to this page or another about the same film (its cast, ratings, reviews): its poster or
+  // heading has the tag already.
+  const here = titleFromUrl(location.href);
   for (const a of Array.from(root.querySelectorAll('a[href]'))) {
-    if (fresh(a) && filmLink(a) && !inImageTile(a) && !inPageChrome(a)) seeds.push(a);
+    if (!fresh(a)) continue;
+    const film = titleFromUrl(a.getAttribute('href') ?? '');
+    if (!film || (film.title === here?.title && film.series === here.series)) continue;
+    if (!inImageTile(a) && !inPageChrome(a)) seeds.push(a);
   }
   return seeds;
 }

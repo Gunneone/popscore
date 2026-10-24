@@ -26,6 +26,9 @@ const FILM_PATH =
 // Show detail links: "/serien/dark", "/series/the-bear-a1b2c3". Not "/show/" or "/tv/": cinemas
 // use those for screenings, broadcasters for whole sections.
 const SERIES_PATH = /\/(?:serie|serien|series|tv-?shows?|tv-?series)\/(.+)$/i;
+// Browse pages under those paths: "/films/year/2010/", "/films/genre/comedy/", "/filme/genre/drama".
+const BROWSE_SEGMENT =
+  /^(?:years?|decades?|genres?|countr(?:y|ies)|languages?|(?:mini-)?themes?|studios?|tags?|categor(?:y|ies)|kategorien?|jahr|land|sprache)$/i;
 
 /**
  * The film or show a detail link points to, from its URL: "/film/avengers-doomsday-2026" ->
@@ -44,8 +47,12 @@ export function titleFromUrl(
   }
   const film = FILM_PATH.exec(path);
   const m = film ?? SERIES_PATH.exec(path);
-  const slug = m?.[1]
-    .split('/')
+  const segments = m?.[1].split('/').filter(Boolean) ?? [];
+  // A browse page, not a film called "Year".
+  if (segments.length > 1 && BROWSE_SEGMENT.test(segments[0])) return null;
+  // An IMDb id names no title, and what follows is a sub-page: "/title/tt0446029/maindetails".
+  if (segments.some((s) => /^tt\d{7,}$/.test(s))) return null;
+  const slug = segments
     .find((s) => /\p{L}{3}/u.test(s))
     ?.replace(/\.\w+$/, '')
     .replace(/^\d+[-_]|[-_](?:\d+|(?=[a-z]*\d)[a-z0-9]{8,})$/gi, '')

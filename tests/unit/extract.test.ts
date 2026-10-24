@@ -255,6 +255,11 @@ describe('titleFromUrl', () => {
     '/programm/heute',
     '/films/',
     '/',
+    // letterboxd.com's browse pages:
+    '/films/year/2010/',
+    '/films/genre/comedy/',
+    '/films/mini-theme/funny-nerds-girls-comedy-dork/by/best-match/',
+    'http://www.imdb.com/title/tt0446029/maindetails',
     // Cinemas link screenings this way, broadcasters whole sections.
     '/show/12345',
     '/play/tv/sendungen',
