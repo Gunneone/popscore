@@ -1,0 +1,21 @@
+# The ratings server. Reads TMDB_KEY and OMDB_KEY from .env next to this file.
+#   docker compose up -d --build
+services:
+  popscore-server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "8787:8787"
+    environment:
+      TMDB_KEY: ${TMDB_KEY:?set TMDB_KEY in .env}
+      OMDB_KEY: ${OMDB_KEY:?set OMDB_KEY in .env}
+      OMDB_DAILY_LIMIT: ${OMDB_DAILY_LIMIT:-1000}
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-300}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+    volumes:
+      - popscore-cache:/data
+    restart: unless-stopped
+
+volumes:
+  popscore-cache:

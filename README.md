@@ -115,6 +115,7 @@ npm run server:build   # dist/server/index.mjs, which runs on Node 22.13+ with n
 npm run server:start
 docker build -f server/Dockerfile -t popscore-server .
 docker run -p 8787:8787 -v popscore-cache:/data -e TMDB_KEY=… -e OMDB_KEY=… popscore-server
+docker compose up -d --build   # same, reading TMDB_KEY / OMDB_KEY from .env; restarts on failure
 ```
 
 Extension builds ask the server at `WXT_SERVER_URL` (from the environment or `.env`), or else at
