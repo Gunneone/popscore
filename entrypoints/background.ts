@@ -7,12 +7,26 @@ import { fetchPosterDataUrl, lookup, pickMovie } from '@/src/lookup';
 import { normalizeTitle } from '@/src/match/normalize';
 import type { Message, Responses } from '@/src/messages';
 import { syncContentScripts } from '@/src/registration';
-import { completePendingSite, getUsage, savePick, watchSettings } from '@/src/settings';
+import {
+  completePendingSite,
+  getUsage,
+  savePick,
+  TAG_OMDB_BUDGET,
+  watchSettings,
+} from '@/src/settings';
+import { displayScore } from '@/src/ui/format';
 
 async function handle(msg: Message): Promise<Responses[Message['type']]> {
   switch (msg.type) {
     case 'lookup':
       return lookup(msg.req);
+    case 'tag': {
+      const result = await lookup(msg.req, { skipPoster: true, omdbBudget: TAG_OMDB_BUDGET });
+      if (result.status === 'error') throw new Error(result.error);
+      if (result.status !== 'match') return null;
+      const score = displayScore(result.movie);
+      return score && { tmdbId: result.movie.tmdbId, value: score.value, source: score.source };
+    }
     case 'search': {
       const result = await lookup({
         candidates: [{ text: msg.text, weight: 1, source: 'typed' }],

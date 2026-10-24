@@ -38,13 +38,15 @@ const totals = {
   posWrong: 0,
   neg: 0,
   negHit: 0,
+  tagged: 0,
+  tags: 0,
 };
 
 for (const r of results) {
   totals.sites++;
   if (r.status !== 'ok') {
     totals[r.status === 'blocked' ? 'blocked' : 'error']++;
-    rows.push(`| ${esc(r.name)} | ${r.kind} | ${r.status} | – | – | ${esc(r.reason)} |`);
+    rows.push(`| ${esc(r.name)} | ${r.kind} | ${r.status} | – | – | – | ${esc(r.reason)} |`);
     continue;
   }
   totals.tested++;
@@ -56,9 +58,13 @@ for (const r of results) {
   totals.posWrong += wrong.length;
   totals.neg += r.negatives.length;
   totals.negHit += falseHits.length;
+  const tagCount = (r.tags?.poster ?? 0) + (r.tags?.title ?? 0);
+  totals.tags += tagCount;
+  if (tagCount) totals.tagged++;
+  const tagCell = r.tags ? `${r.tags.poster} + ${r.tags.title}` : '–';
   const note = r.positives.length === 0 ? 'no film links found' : '';
   rows.push(
-    `| ${esc(r.name)} | ${r.kind} | ok | ${hits.length}/${r.positives.length}${wrong.length ? ` (${wrong.length} ⚠)` : ''} | ${r.negatives.length - falseHits.length}/${r.negatives.length} | ${note} |`,
+    `| ${esc(r.name)} | ${r.kind} | ok | ${hits.length}/${r.positives.length}${wrong.length ? ` (${wrong.length} ⚠)` : ''} | ${r.negatives.length - falseHits.length}/${r.negatives.length} | ${tagCell} | ${note} |`,
   );
   const lines = [
     ...r.positives
@@ -68,6 +74,7 @@ for (const r of results) {
           `- film “${esc(p.label)}” → ${p.state ? `${p.state}: ${esc(p.card)}` : 'no card'} (${p.href})`,
       ),
     ...falseHits.map((p) => `- ${p.kind} “${esc(p.label)}” → ${p.state}: ${esc(p.card)}`),
+    ...(r.tags?.samples ?? []).map((s) => `- tag ${esc(s)}`),
   ];
   if (lines.length)
     details.push(`### ${r.name}\n\n${r.finalUrl ?? r.url}\n\n${lines.join('\n')}\n`);
@@ -79,12 +86,13 @@ ${totals.tested} of ${totals.sites} sites tested (${totals.blocked} blocked or g
 
 - Film links: ${totals.posHit} of ${totals.pos} opened a card${totals.posWrong ? `, ${totals.posWrong} of them possibly for a different film` : ''}.
 - Other page elements: ${totals.neg - totals.negHit} of ${totals.neg} stayed quiet (${totals.negHit} opened a card).
+- Score tags: ${totals.tags} on ${totals.tagged} of ${totals.tested} sites after loading and one scroll.
 
-| Site | Kind | Status | Films with card | Others quiet | Note |
-| --- | --- | --- | --- | --- | --- |
+| Site | Kind | Status | Films with card | Others quiet | Tags (poster + title) | Note |
+| --- | --- | --- | --- | --- | --- | --- |
 ${rows.join('\n')}
 
-## Misses and false cards
+## Misses, false cards and sample tags
 
 ${details.join('\n') || 'None.'}
 `;

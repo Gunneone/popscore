@@ -4,6 +4,7 @@ import { browser } from 'wxt/browser';
 import { send } from '@/src/messages';
 import {
   getSettings,
+  TAG_OMDB_BUDGET,
   updateSettings,
   watchSettings,
   type LinkTarget,
@@ -201,6 +202,24 @@ function CardSettings({ settings }: { settings: Settings }) {
         </div>
       </div>
       <div class="field">
+        <label class="switch">
+          <input
+            type="checkbox"
+            checked={settings.scoreTags}
+            onChange={(e) => void updateSettings({ scoreTags: e.currentTarget.checked })}
+          />
+          <span>
+            Score tags on posters
+            <br />
+            <span class="muted small">
+              A small score on every movie you scroll past on the sites above, in the verdict color.
+              Each new film uses an OMDb lookup; past {TAG_OMDB_BUDGET} today, tags show TMDB's
+              score and the rest is kept for the card.
+            </span>
+          </span>
+        </label>
+      </div>
+      <div class="field">
         <span>Verdict colors</span>
         <VerdictSlider
           amberAt={settings.amberAt}
@@ -241,7 +260,10 @@ function Data() {
       <p>
         OMDb lookups today: <b>{usage?.omdbCalls ?? '–'}</b> of{' '}
         {OMDB_DAILY_LIMIT.toLocaleString('en')}{' '}
-        <span class="muted small">(ratings are cached for 3 days, so repeat views are free)</span>
+        <span class="muted small">
+          (ratings are cached for 3 days, so repeat views are free; score tags stop at{' '}
+          {TAG_OMDB_BUDGET})
+        </span>
       </p>
       <button
         class="btn"
@@ -251,9 +273,10 @@ function Data() {
         {cleared ? 'Cache cleared' : 'Clear cached ratings'}
       </button>
       <p class="muted small privacy">
-        <b>Privacy:</b> when you point at a title, that title text is sent to TMDB to find the
-        movie, and the movie's IMDb id is sent to OMDb for the rating. Nothing else leaves your
-        browser: no browsing history, no analytics, no account.
+        <b>Privacy:</b> when you point at a title, or with score tags on, when a movie comes into
+        view on a site above, its title text is sent to TMDB to find the movie, and the movie's IMDb
+        id is sent to OMDb for the rating. Nothing else leaves your browser: no browsing history, no
+        analytics, no account.
       </p>
     </section>
   );

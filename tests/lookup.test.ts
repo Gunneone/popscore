@@ -202,6 +202,46 @@ describe('lookup', () => {
     vi.useRealTimers();
   });
 
+  it("stops asking OMDb over the tags' budget, without caching the gap", async () => {
+    const provider = makeProvider();
+    const tag = { provider, fetchPoster, omdbBudget: 1 };
+    const first = await lookup(req('Dune'), tag);
+    expect(first).toMatchObject({ status: 'match', movie: { rating: 7.2 } });
+    expect(provider.rating).toHaveBeenCalledTimes(1);
+
+    // The budget is used up: TMDB's score is all there is for the next film.
+    const second = await lookup(req('Die Unfassbaren'), tag);
+    expect(second).toMatchObject({ status: 'match', movie: { rating: null, tmdbRating: 7.5 } });
+    expect(provider.rating).toHaveBeenCalledTimes(1);
+    expect(second.status === 'match' && second.ratingError).toBeFalsy();
+
+    // The card has no budget and still gets the IMDb rating.
+    const card = await lookup(req('Die Unfassbaren'), { provider, fetchPoster });
+    expect(card).toMatchObject({ status: 'match', movie: { rating: 7.2 } });
+    expect(provider.rating).toHaveBeenCalledTimes(2);
+    expect((await getUsage()).omdbCalls).toBe(2);
+  });
+
+  it('skips the poster for tags', async () => {
+    const poster = vi.fn(fetchPoster);
+    const result = await lookup(req('Dune'), {
+      provider: makeProvider(),
+      fetchPoster: poster,
+      skipPoster: true,
+    });
+    expect(result).toMatchObject({ status: 'match', movie: { poster: null } });
+    expect(poster).not.toHaveBeenCalled();
+  });
+
+  it('counts every OMDb call when several lookups run at once', async () => {
+    const provider = makeProvider();
+    await Promise.all([
+      lookup(req('Dune'), { provider, fetchPoster }),
+      lookup(req('Die Unfassbaren'), { provider, fetchPoster }),
+    ]);
+    expect((await getUsage()).omdbCalls).toBe(2);
+  });
+
   it('remembers a "Wrong movie?" pick for that text', async () => {
     const provider = makeProvider();
     const first = await lookup(req('Dune'), { provider, fetchPoster });

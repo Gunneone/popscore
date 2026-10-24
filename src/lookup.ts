@@ -4,7 +4,7 @@ import { TMDB_IMAGE } from './api/tmdb';
 import { cacheGet, cacheSet, DAY } from './cache';
 import { normalizeTitle } from './match/normalize';
 import { rankResults, type Scored } from './match/score';
-import { countOmdbCall, getPick, getSettings, hasKeys, savePick } from './settings';
+import { countOmdbCall, getPick, getSettings, getUsage, hasKeys, savePick } from './settings';
 import type {
   ImdbRating,
   LookupError,
@@ -21,6 +21,10 @@ export interface LookupDeps {
   provider?: RatingsProvider;
   fetchPoster?: (path: string) => Promise<string | null>;
   now?: Date;
+  /** Score tags only need the numbers, not the poster. */
+  skipPoster?: boolean;
+  /** Don't ask OMDb for ratings that aren't cached once this many calls were made today. */
+  omdbBudget?: number;
 }
 
 /** "de" -> "de-DE"; TMDB uses the language to decide which title translation it returns. */
@@ -76,10 +80,16 @@ async function cachedDetails(
   return details;
 }
 
-async function cachedRating(provider: RatingsProvider, imdbId: string): Promise<ImdbRating> {
+async function cachedRating(
+  provider: RatingsProvider,
+  imdbId: string,
+  budget = Infinity,
+): Promise<ImdbRating> {
   const key = `r:${imdbId}`;
   const hit = await cacheGet<ImdbRating>(key);
   if (hit) return hit;
+  // Over budget: no rating, and nothing cached, so the card can still fetch the real one later.
+  if ((await getUsage()).omdbCalls >= budget) return { rating: null, votes: null };
   await countOmdbCall();
   const rating = await provider.rating(imdbId);
   // OMDb lags behind IMDb for new releases; check again soon so the real rating appears early.
@@ -122,14 +132,15 @@ async function buildCard(
   let ratingError: LookupError | undefined;
   if (details.imdbId) {
     try {
-      rating = await cachedRating(provider, details.imdbId);
+      rating = await cachedRating(provider, details.imdbId, deps.omdbBudget);
     } catch (err) {
       ratingError = toLookupError(err);
     }
   }
-  const poster = details.posterPath
-    ? await (deps.fetchPoster ?? fetchPosterDataUrl)(details.posterPath)
-    : null;
+  const poster =
+    details.posterPath && !deps.skipPoster
+      ? await (deps.fetchPoster ?? fetchPosterDataUrl)(details.posterPath)
+      : null;
   return { movie: { ...details, ...rating, poster }, ratingError };
 }
 

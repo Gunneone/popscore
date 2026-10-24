@@ -81,11 +81,20 @@ export class CardHost {
   }
 }
 
-/** Constructable stylesheets aren't subject to the page's style-src CSP; fall back to <style>. */
-function applyStyles(shadow: ShadowRoot, css: string): void {
+const sheets = new Map<string, CSSStyleSheet>();
+
+/**
+ * Constructable stylesheets aren't subject to the page's style-src CSP; fall back to <style>. One
+ * sheet per stylesheet text, shared by every shadow root that uses it (there's a tag per movie).
+ */
+export function applyStyles(shadow: ShadowRoot, css: string): void {
   try {
-    const sheet = new CSSStyleSheet();
-    sheet.replaceSync(css);
+    let sheet = sheets.get(css);
+    if (!sheet) {
+      sheet = new CSSStyleSheet();
+      sheet.replaceSync(css);
+      sheets.set(css, sheet);
+    }
     shadow.adoptedStyleSheets = [sheet];
     if (shadow.adoptedStyleSheets.length === 1) return;
   } catch {

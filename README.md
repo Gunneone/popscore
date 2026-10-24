@@ -10,6 +10,10 @@ Disney+, …). No more opening IMDb in another tab to decide whether a film is w
   markets (DE, AT, CH, UK, IE, US, CA, AU, NZ), listed in [src/sites.ts](src/sites.ts). In the
   settings they're grouped into Cinemas, Streaming services and Your sites; each list and each site
   can be switched off on its own.
+- Every movie in view gets a small score tag in the same green / amber / red, on its poster (or
+  after its title in text listings). Tags only look films up as they scroll into view, and stop
+  asking OMDb at 800 lookups a day so the card keeps the rest; past that they show TMDB's score.
+  They can be switched off in the settings.
 - The card shows poster, year, a green / amber / red IMDb score with vote count, genres, runtime and
   a short plot.
 - New releases: OMDb's copy of IMDb ratings lags a few weeks behind, so until it has one the card
@@ -34,6 +38,12 @@ Candidates are cleaned of cinema noise (OV, OmU, 3D, IMAX, FSK 12, "Vorpremiere:
 then searched on TMDB in the page's language. A match is only shown when the title is similar
 enough, the year fits and the film isn't obscure, so hovering a "Play" button never pops up a
 card. See `src/detect/` and `src/match/`.
+
+Score tags use the same detector: every image outside menus and footers, plus links to a film's
+page in tiles without an image, is treated as if you pointed at it once it scrolls into view, and
+gets a tag when that finds a confident match. The tag goes into the page next to the poster (or at
+the end of the title), so it scrolls, slides and gets clipped along with it. See
+`src/detect/scan.ts` and `entrypoints/content/tags.ts`.
 
 To see what it would detect on any site, without API keys, run `npm run probe`, paste
 `dist/probe/probe.js` into the DevTools console and call `worthItProbe.watch()`.
@@ -75,14 +85,14 @@ Load it by hand: `npm run build`, then in Chrome open `chrome://extensions`, ena
 
 | Path                                         | What                                                            |
 | -------------------------------------------- | --------------------------------------------------------------- |
-| `entrypoints/content/`                       | Hover/dwell/Alt trigger, mounts the card                        |
+| `entrypoints/content/`                       | Hover/dwell/Alt trigger, mounts the card and the score tags     |
 | `entrypoints/background.ts`                  | Message router; all network calls happen here                   |
 | `entrypoints/options/`, `entrypoints/popup/` | Settings + welcome page, toolbar toggle                         |
 | `src/detect/`                                | Generic title extraction and cleaning                           |
 | `src/match/`                                 | Title normalization and result scoring                          |
 | `src/api/`                                   | TMDB and OMDb clients behind a `RatingsProvider` interface      |
 | `src/lookup.ts`, `src/cache.ts`              | Search → details → rating with caching and "Wrong movie?" picks |
-| `src/ui/`                                    | Card component, shadow-DOM host, positioning                    |
+| `src/ui/`                                    | Card and score tag, shadow-DOM host, positioning                |
 
 ## Publishing
 

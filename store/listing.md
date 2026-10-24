@@ -12,9 +12,10 @@ Point at a movie on cinema or streaming sites and see its IMDb rating instantly.
 
 Is it worth it, or is it trash? Stop opening IMDb in another tab.
 
-Worth It? shows a small card with the IMDb rating when you rest your pointer on a movie title or
-poster on cinema and streaming websites:
+Worth It? puts a small IMDb score tag on every movie poster on cinema and streaming websites, and
+shows a card with the details when you rest your pointer on a title or poster:
 
+• Score tags on the posters, in a traffic-light color, so you can scan a whole programme at once
 • IMDb score with a traffic-light color (green / amber / red, adjustable) and vote count
 • Brand-new releases without an IMDb rating yet show TMDB's user score, clearly labelled
 • Poster, year, genres, runtime and a short plot
@@ -34,12 +35,14 @@ Chrome: Entertainment · Firefox: Search Tools / Photos, Music & Videos
 
 ## Chrome Web Store: single purpose
 
-Show the IMDb rating of a movie when the user points at its title on a web page.
+Show the IMDb rating of the movies on a web page, as tags on their posters and in a card when the
+user points at a title.
 
 ## Chrome Web Store: permission justifications
 
 - **Host permissions for the listed cinema/streaming sites (content script)**: read the title of
-  the element under the pointer and display the rating card on those pages.
+  the element under the pointer, and of the movies in view for the score tags, and display the
+  rating card and tags on those pages.
 - **api.themoviedb.org, image.tmdb.org, www.omdbapi.com**: look up the movie, its poster and its
   IMDb rating.
 - **Optional host permissions (`<all_urls>`)**: requested only when the user turns on "Alt-hover
@@ -52,7 +55,8 @@ Show the IMDb rating of a movie when the user points at its title on a web page.
 
 ## Chrome Web Store: data usage disclosure
 
-- Collected: **Website content** (the title text under the pointer, sent to TMDB for the lookup).
+- Collected: **Website content** (the title text under the pointer, or of movies in view for the
+  score tags, sent to TMDB for the lookup).
 - Not sold, not used for anything except the single purpose, not used for creditworthiness.
 
 ## Firefox (AMO)

@@ -60,6 +60,13 @@ export interface MovieCard extends MovieDetails, ImdbRating {
   poster: string | null;
 }
 
+/** What a score tag shows: the card's score, without the rest of the card. */
+export interface TagScore {
+  tmdbId: number;
+  value: number;
+  source: 'IMDb' | 'TMDB';
+}
+
 export type LookupError =
   'missing-keys' | 'bad-tmdb-key' | 'bad-omdb-key' | 'rate-limit' | 'offline' | 'unknown';
 

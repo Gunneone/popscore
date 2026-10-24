@@ -1,0 +1,31 @@
+.tag {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #8a919c;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.45);
+  font:
+    700 12px/1.2 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.good {
+  background: #198a47;
+}
+
+.okay {
+  background: #f2b544;
+  color: #1b1d22;
+}
+
+.bad {
+  background: #d23c3c;
+}

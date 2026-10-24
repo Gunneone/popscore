@@ -1,8 +1,17 @@
 import { browser } from 'wxt/browser';
-import type { KeyTestResult, LookupRequest, LookupResult, MovieSummary, Usage } from './types';
+import type {
+  KeyTestResult,
+  LookupRequest,
+  LookupResult,
+  MovieSummary,
+  TagScore,
+  Usage,
+} from './types';
 
 export type Message =
   | { type: 'lookup'; req: LookupRequest }
+  /** Score tag for a movie on the page: rejects with the LookupError code when the lookup failed. */
+  | { type: 'tag'; req: LookupRequest }
   /** User typed a title into the card; remember the answer for the hovered text `original`. */
   | { type: 'search'; original: string; text: string; pageLang: string; cinema: boolean }
   | { type: 'pick'; query: string; tmdbId: number; alternatives: MovieSummary[] }
@@ -14,6 +23,8 @@ export type Message =
 
 export interface Responses {
   lookup: LookupResult;
+  /** null: not a film, or no score yet. */
+  tag: TagScore | null;
   search: LookupResult;
   pick: LookupResult;
   posters: Record<string, string | null>;

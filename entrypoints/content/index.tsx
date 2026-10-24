@@ -3,12 +3,13 @@ import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { extractCandidates, inPageChrome } from '@/src/detect/extract';
 import { readStructured, type StructuredInfo } from '@/src/detect/structured';
 import { send } from '@/src/messages';
-import { getSettings, watchSettings, type Settings } from '@/src/settings';
+import { getSettings, hasKeys, watchSettings, type Settings } from '@/src/settings';
 import { DEFAULT_SITE_MATCHES, findDefaultSite, siteState } from '@/src/sites';
 import type { LookupResult, MovieSummary } from '@/src/types';
 import { Card, type CardState } from '@/src/ui/Card';
 import { CardHost } from '@/src/ui/host';
 import { pointerRect, type Rect } from '@/src/ui/position';
+import { startScoreTags, type ScoreTags } from './tags';
 
 export default defineContentScript({
   matches: DEFAULT_SITE_MATCHES,
@@ -29,7 +30,6 @@ function isEditable(el: Element | null): boolean {
 
 async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
   let settings: Settings = await getSettings();
-  ctx.onInvalidated(watchSettings((s) => (settings = s)));
 
   const host = new CardHost();
   ctx.onInvalidated(() => host.destroy());
@@ -52,6 +52,31 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
     document.documentElement.lang ||
     (/\.(de|at|ch)$/.test(location.hostname) ? 'de-DE' : navigator.language) ||
     'en';
+
+  /** Score tags on every movie: enabled sites only, never where there's just Alt-hover. */
+  let tags: ScoreTags | null = null;
+  const syncTags = () => {
+    const want = settings.scoreTags && autoEnabled() && hasKeys(settings);
+    if (want && !tags) {
+      tags = startScoreTags({
+        getStructured,
+        pageLang,
+        isCinema,
+        colors: () => ({ greenAt: settings.greenAt, amberAt: settings.amberAt }),
+      });
+    } else if (!want && tags) {
+      tags.stop();
+      tags = null;
+    } else tags?.repaint();
+  };
+  syncTags();
+  ctx.onInvalidated(
+    watchSettings((s) => {
+      settings = s;
+      syncTags();
+    }),
+  );
+  ctx.onInvalidated(() => tags?.stop());
 
   let pointer = { x: 0, y: 0 };
   let hovered: Element | null = null;

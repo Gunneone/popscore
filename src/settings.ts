@@ -21,6 +21,8 @@ export interface Settings extends SiteSettings {
   amberAt: number;
   /** Where the card's "Open on …" link goes. */
   linkTo: LinkTarget;
+  /** A small score tag on every movie on enabled sites, not just the card on hover. */
+  scoreTags: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -33,7 +35,14 @@ export const DEFAULT_SETTINGS: Settings = {
   greenAt: 7,
   amberAt: 6,
   linkTo: 'imdb',
+  scoreTags: true,
 };
+
+/**
+ * Score tags stop asking OMDb for new ratings at this many calls a day (free keys allow 1,000),
+ * so the card always has lookups left.
+ */
+export const TAG_OMDB_BUDGET = 800;
 
 const settingsItem = storage.defineItem<Partial<Settings>>('sync:settings', { fallback: {} });
 
@@ -95,9 +104,16 @@ export async function getUsage(): Promise<{ date: string; omdbCalls: number }> {
   return u.date === today() ? u : { date: today(), omdbCalls: 0 };
 }
 
-export async function countOmdbCall(): Promise<void> {
-  const u = await getUsage();
-  await usageItem.setValue({ date: u.date, omdbCalls: u.omdbCalls + 1 });
+let counting: Promise<void> = Promise.resolve();
+
+/** Serialized: score tags look several films up at once, and each read-modify-write must count. */
+export function countOmdbCall(): Promise<void> {
+  const next = counting.then(async () => {
+    const u = await getUsage();
+    await usageItem.setValue({ date: u.date, omdbCalls: u.omdbCalls + 1 });
+  });
+  counting = next.catch(() => {});
+  return next;
 }
 
 /**

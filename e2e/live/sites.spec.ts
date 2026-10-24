@@ -60,6 +60,8 @@ interface SiteResult {
   reason?: string;
   positives: Probe[];
   negatives: Probe[];
+  /** Score tags on the page after loading and one scroll: how many, and what a few sit on. */
+  tags?: { poster: number; title: number; samples: string[] };
 }
 
 const test = base.extend<object, { ext: BrowserContext }>({
@@ -227,6 +229,21 @@ async function markProbes(page: Page) {
   });
 }
 
+/** Counts the score tags and says what the first few are on ("7.1 ← Dune: Part Two"). */
+function readTags(): { poster: number; title: number; samples: string[] } {
+  const tags = [...document.querySelectorAll<HTMLElement>('worth-it-tag')];
+  const label = (tag: HTMLElement) => {
+    const img = tag.parentElement?.querySelector('img');
+    const text = img?.alt || tag.parentElement?.textContent || '';
+    return text.replace(/\s+/g, ' ').trim().slice(0, 60);
+  };
+  return {
+    poster: tags.filter((t) => t.style.position === 'absolute').length,
+    title: tags.filter((t) => t.style.position !== 'absolute').length,
+    samples: tags.slice(0, 8).map((t) => `${t.dataset.score} ← ${label(t)}`),
+  };
+}
+
 /** A point inside `node`'s visible part where it (or its tile) is the topmost element, or null. */
 function hoverPoint(node: Element): { x: number; y: number } | null {
   const r = node.getBoundingClientRect();
@@ -312,7 +329,8 @@ for (const site of DEFAULT_SITES) {
         await page.mouse.wheel(0, 1500);
         await page.waitForTimeout(1500);
         await page.mouse.wheel(0, -3000);
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(2500);
+        result.tags = await page.evaluate(readTags);
         await clearOverlays(page);
         const probes = await markProbes(page);
         // Heavy pages make each hover slow; stop probing well before the test times out.

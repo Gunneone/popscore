@@ -53,6 +53,66 @@ async function mockTmdbNoResults(delayMs: number) {
   }, delayMs);
 }
 
+/** The fixture's films, as TMDB and OMDb would describe them. */
+const FILMS = [
+  // prettier-ignore
+  { key: 'dune', id: 693134, title: 'Dune: Part Two', date: '2024-02-27', votes: 7000, tmdb: 8.1, imdb: 'tt15239678', imdbRating: 8.5 },
+  // prettier-ignore
+  { key: 'unfassbaren', id: 75656, title: 'Die Unfassbaren - Now You See Me', date: '2013-05-29', votes: 15000, tmdb: 7.3, imdb: 'tt1670345', imdbRating: 6.4 },
+  // A new release OMDb has no rating for yet: the tag shows TMDB's score.
+  // prettier-ignore
+  { key: 'digger', id: 1311031, title: 'Digger', date: '2026-10-01', votes: 40, tmdb: 5.1, imdb: 'tt27999999', imdbRating: null },
+  // prettier-ignore
+  { key: 'oppenheimer', id: 872585, title: 'Oppenheimer', date: '2023-07-19', votes: 9000, tmdb: 8.1, imdb: 'tt15398776', imdbRating: 8.3 },
+];
+
+/** Stands in for TMDB and OMDb inside the extension's service worker, with the films above. */
+async function mockMovieApis() {
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  await worker.evaluate((films) => {
+    const g = globalThis as unknown as { fetch: typeof fetch };
+    const real = g.fetch.bind(globalThis);
+    const json = (body: unknown) =>
+      new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
+    g.fetch = async (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      if (url.hostname === 'api.themoviedb.org') {
+        if (url.pathname === '/3/search/movie') {
+          const q = (url.searchParams.get('query') ?? '').toLowerCase();
+          const hits = films.filter((f) => q.includes(f.key));
+          return json({
+            results: hits.map((f) => ({
+              id: f.id,
+              title: f.title,
+              original_title: f.title,
+              release_date: f.date,
+              vote_count: f.votes,
+              popularity: 50,
+            })),
+          });
+        }
+        const f = films.find((m) => url.pathname === `/3/movie/${m.id}`);
+        if (!f) return new Response('{}', { status: 404 });
+        return json({
+          id: f.id,
+          title: f.title,
+          original_title: f.title,
+          release_date: f.date,
+          imdb_id: f.imdb,
+          vote_average: f.tmdb,
+          vote_count: f.votes,
+        });
+      }
+      if (url.hostname === 'www.omdbapi.com') {
+        const f = films.find((m) => m.imdb === url.searchParams.get('i'));
+        const rating = f?.imdbRating ? String(f.imdbRating) : 'N/A';
+        return json({ Response: 'True', imdbRating: rating, imdbVotes: '1,000' });
+      }
+      return real(input, init);
+    };
+  }, FILMS);
+}
+
 test('asks for API keys when none are set', async () => {
   const page = await context.newPage();
   await page.goto(PAGE_URL);
@@ -140,4 +200,50 @@ test('dwelling on a TV show never shows a card, not even a loading one', async (
     () => (window as unknown as { cardStates: string[] }).cardStates,
   );
   expect(states).toEqual([]);
+});
+
+test('tags every film with its score, on the poster or after the title', async () => {
+  await setKeys('tmdb-mock', 'omdb-mock');
+  await mockMovieApis();
+
+  const page = await context.newPage();
+  await page.goto(PAGE_URL);
+  const tag = (id: number) => page.locator(`worth-it-tag[data-tmdb="${id}"]`);
+  await expect(page.locator('worth-it-tag')).toHaveCount(4, { timeout: 10_000 });
+
+  await expect(tag(693134)).toHaveAttribute('data-verdict', 'good');
+  await expect(tag(693134)).toHaveAttribute('data-score', '8.5');
+  await expect(tag(75656)).toHaveAttribute('data-verdict', 'okay');
+  // No IMDb rating yet, so TMDB's 5.1.
+  await expect(tag(1311031)).toHaveAttribute('data-score', '5.1');
+  await expect(tag(1311031)).toHaveAttribute('data-verdict', 'bad');
+
+  // In the poster's top-left corner.
+  const poster = (await page.locator('#poster-dune').boundingBox())!;
+  const box = (await tag(693134).boundingBox())!;
+  expect(Math.abs(box.x - (poster.x + 6))).toBeLessThan(2);
+  expect(Math.abs(box.y - (poster.y + 6))).toBeLessThan(2);
+
+  // A text link gets it after its title; the TV show and other links get none.
+  await expect(page.locator('#link-oppenheimer worth-it-tag')).toHaveAttribute('data-score', '8.3');
+  await expect(page.locator('#link-kontakt worth-it-tag, li.show worth-it-tag')).toHaveCount(0);
+  // The tag's text stays in its shadow root: the hover detector reads the link as before.
+  expect(await page.locator('#link-oppenheimer').innerText()).toBe('Oppenheimer');
+  await page.screenshot({ path: 'test-results/tags.png' });
+
+  // The hover card still opens through the tag.
+  await page.locator('#poster-dune').hover({ position: { x: 12, y: 12 } });
+  await expect(page.locator('worth-it-card')).toHaveAttribute('data-state', 'match', {
+    timeout: 5000,
+  });
+});
+
+test('no tags when they are switched off', async () => {
+  await setKeys('tmdb-mock', 'omdb-mock', { scoreTags: false });
+  await mockMovieApis();
+
+  const page = await context.newPage();
+  await page.goto(PAGE_URL);
+  await page.waitForTimeout(2000);
+  await expect(page.locator('worth-it-tag')).toHaveCount(0);
 });
