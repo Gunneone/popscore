@@ -1,6 +1,6 @@
 import { defineConfig } from 'wxt';
 import preact from '@preact/preset-vite';
-import { API_HOST_PERMISSIONS } from './src/sites';
+import { apiHostPermissions, DEFAULT_SERVER_URL } from './src/sites';
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
@@ -15,12 +15,13 @@ export default defineConfig({
     sourcesTemplate: '{{name}}-source-{{packageVersion}}.zip',
   },
   vite: () => ({ plugins: [preact()] }),
-  manifest: {
+  // A function, so it runs after WXT has loaded .env (WXT_SERVER_URL for the host permission).
+  manifest: () => ({
     name: 'Worth It?',
     description:
       'Hover a movie title on cinema and streaming sites to see its IMDb rating. Movie data from TMDB and OMDb.',
     permissions: ['storage', 'scripting', 'activeTab'],
-    host_permissions: API_HOST_PERMISSIONS,
+    host_permissions: apiHostPermissions(process.env.WXT_SERVER_URL || DEFAULT_SERVER_URL),
     optional_host_permissions: ['<all_urls>'],
     browser_specific_settings: {
       gecko: {
@@ -28,5 +29,5 @@ export default defineConfig({
         data_collection_permissions: { required: ['websiteContent'] },
       },
     },
-  },
+  }),
 });

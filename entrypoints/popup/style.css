@@ -27,10 +27,6 @@ body {
   margin: 8px 0 0;
 }
 
-.setup p {
-  margin: 0 0 8px !important;
-}
-
 .popup footer {
   padding-top: 8px;
   border-top: 1px solid var(--line);

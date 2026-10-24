@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { ApiError } from '../src/api/errors';
 import type { RatingsProvider } from '../src/api/provider';
+import { SERVER_URL } from '../src/api/server';
 import { clearCache } from '../src/cache';
 import { lookup, pickMovie, tmdbLanguage } from '../src/lookup';
 import { getUsage, updateSettings } from '../src/settings';
@@ -55,12 +56,17 @@ const details = (id: number): MovieDetails => {
   };
 };
 
+/** Ratings come from an own OMDb key unless `ownOmdbKey: false`. */
 function makeProvider(overrides: Partial<RatingsProvider> = {}) {
   return {
     search: vi.fn(async (q: string) => SEARCH[q] ?? []),
     details: vi.fn(async (id: number) => details(id)),
-    rating: vi.fn(async () => ({ rating: 7.2, votes: 712_345 })),
+    rating: vi.fn(async (_imdbId: string, _opts?: { tag?: boolean }) => ({
+      rating: 7.2,
+      votes: 712_345,
+    })),
     ...overrides,
+    ownOmdbKey: overrides.ownOmdbKey ?? true,
   } satisfies RatingsProvider;
 }
 
@@ -150,9 +156,51 @@ describe('lookup', () => {
     expect(result).toMatchObject({ status: 'match', query: 'Dune', movie: { tmdbId: 438631 } });
   });
 
-  it('reports missing keys without calling anything', async () => {
-    const result = await lookup(req('Dune'));
-    expect(result).toEqual({ status: 'error', error: 'missing-keys' });
+  it('asks the ratings server when no keys are set', async () => {
+    const asked: URL[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: URL | string) => {
+        const u = new URL(String(url));
+        asked.push(u);
+        if (u.pathname === '/v1/search') return Response.json(SEARCH.Dune);
+        if (u.pathname === '/v1/movie/438631') return Response.json(details(438631));
+        if (u.pathname === '/v1/rating/tt438631') {
+          return Response.json({ rating: 8, votes: 1_012_345 });
+        }
+        return Response.json({ error: 'not-found' }, { status: 404 });
+      }),
+    );
+    const result = await lookup(req('Dune'), { fetchPoster, tag: true });
+    expect(result).toMatchObject({ status: 'match', movie: { tmdbId: 438631, rating: 8 } });
+    expect(asked.every((u) => u.origin === new URL(SERVER_URL).origin)).toBe(true);
+    expect(asked.find((u) => u.pathname === '/v1/search')?.searchParams.get('language')).toBe(
+      'de-DE',
+    );
+    // Tags say so, for the server's budget; the browser's own OMDb count stays untouched.
+    expect(asked.find((u) => u.pathname.startsWith('/v1/rating/'))?.searchParams.get('tag')).toBe(
+      '1',
+    );
+    expect((await getUsage()).omdbCalls).toBe(0);
+    vi.unstubAllGlobals();
+  });
+
+  it('shows the movie with a note when the server is busy for the rating', async () => {
+    const provider = makeProvider({
+      ownOmdbKey: false,
+      rating: vi.fn(async () => {
+        throw new ApiError('server-busy', 'busy');
+      }),
+    });
+    const result = await lookup(req('Dune'), { provider, fetchPoster, omdbBudget: 0 });
+    expect(result).toMatchObject({
+      status: 'match',
+      ratingError: 'server-busy',
+      movie: { rating: null, tmdbRating: 7.5 },
+    });
+    // The own-key budget doesn't apply to the server.
+    expect(provider.rating).toHaveBeenCalledTimes(1);
+    expect((await getUsage()).omdbCalls).toBe(0);
   });
 
   it('maps API errors', async () => {
@@ -197,6 +245,20 @@ describe('lookup', () => {
     const provider = makeProvider({ rating });
     await lookup(req('Dune'), { provider, fetchPoster });
     vi.setSystemTime(new Date('2026-10-17T19:00:00Z'));
+    await lookup(req('Dune'), { provider, fetchPoster });
+    expect(rating).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it('re-checks a rating on fewer than 100 votes after a day', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-17T12:00:00Z') });
+    const rating = vi.fn(async () => ({ rating: 6.1, votes: 99 }));
+    const provider = makeProvider({ rating });
+    await lookup(req('Dune'), { provider, fetchPoster });
+    vi.setSystemTime(new Date('2026-10-18T11:00:00Z'));
+    await lookup(req('Dune'), { provider, fetchPoster });
+    expect(rating).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(new Date('2026-10-18T13:00:00Z'));
     await lookup(req('Dune'), { provider, fetchPoster });
     expect(rating).toHaveBeenCalledTimes(2);
     vi.useRealTimers();

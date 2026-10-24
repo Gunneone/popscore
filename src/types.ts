@@ -68,7 +68,13 @@ export interface TagScore {
 }
 
 export type LookupError =
-  'missing-keys' | 'bad-tmdb-key' | 'bad-omdb-key' | 'rate-limit' | 'offline' | 'unknown';
+  | 'bad-tmdb-key'
+  | 'bad-omdb-key'
+  | 'rate-limit'
+  /** The Worth It? ratings server is over its limits; own API keys don't depend on it. */
+  | 'server-busy'
+  | 'offline'
+  | 'unknown';
 
 export type LookupResult =
   | {

@@ -215,12 +215,22 @@ export function siteState(url: string, s: SiteSettings): SiteState {
   return { site, pattern, list, listOn, siteOn, on: listOn && siteOn };
 }
 
+/**
+ * The Worth It? ratings server (see server/), used for each service the user has no own key for.
+ * Builds can point elsewhere with WXT_SERVER_URL. `.example` never resolves: set the real address
+ * before a release.
+ */
+export const DEFAULT_SERVER_URL = 'https://ratings.worth-it.example';
+
 /** Hosts the background worker talks to. */
-export const API_HOST_PERMISSIONS = [
-  'https://api.themoviedb.org/*',
-  'https://image.tmdb.org/*',
-  'https://www.omdbapi.com/*',
-];
+export function apiHostPermissions(serverUrl: string): string[] {
+  return [
+    'https://api.themoviedb.org/*',
+    'https://image.tmdb.org/*',
+    'https://www.omdbapi.com/*',
+    originPattern(serverUrl) ?? originPattern(DEFAULT_SERVER_URL)!,
+  ];
+}
 
 /** Minimal match-pattern test for the patterns used above (scheme wildcard, *. subdomains, * in path). */
 export function matchesPattern(url: string, pattern: string): boolean {

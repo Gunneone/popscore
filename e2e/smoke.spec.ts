@@ -1,12 +1,15 @@
 import { chromium, expect, test, type BrowserContext } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { DEFAULT_SERVER_URL } from '../src/sites';
 
 // Loads the built Chrome extension and hovers posters on a fake cinema page served under a real
 // cinema domain, so the manifest's content script runs. Build first: `npm run build`.
 const EXTENSION = path.resolve('dist/chrome');
 const FIXTURE = readFileSync(path.resolve('e2e/fixtures/cinema.html'), 'utf8');
 const PAGE_URL = 'https://www.cinestar.de/worth-it-e2e';
+/** The ratings server the build asks without own keys (`npm run e2e` builds with the same .env). */
+const SERVER_ORIGIN = new URL(process.env.WXT_SERVER_URL || DEFAULT_SERVER_URL).origin;
 
 // The extension's service worker global, where `evaluate` runs.
 declare const chrome: { storage: { sync: { set(items: object): Promise<void> } } };
@@ -66,60 +69,122 @@ const FILMS = [
   { key: 'oppenheimer', id: 872585, title: 'Oppenheimer', date: '2023-07-19', votes: 9000, tmdb: 8.1, imdb: 'tt15398776', imdbRating: 8.3 },
 ];
 
-/** Stands in for TMDB and OMDb inside the extension's service worker, with the films above. */
+/**
+ * Stands in for TMDB, OMDb and the ratings server inside the extension's service worker, with the
+ * films above. The hosts asked are kept in the worker's `asked`.
+ */
 async function mockMovieApis() {
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
-  await worker.evaluate((films) => {
-    const g = globalThis as unknown as { fetch: typeof fetch };
-    const real = g.fetch.bind(globalThis);
-    const json = (body: unknown) =>
-      new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
-    g.fetch = async (input, init) => {
-      const url = new URL(input instanceof Request ? input.url : String(input));
-      if (url.hostname === 'api.themoviedb.org') {
-        if (url.pathname === '/3/search/movie') {
-          const q = (url.searchParams.get('query') ?? '').toLowerCase();
-          const hits = films.filter((f) => q.includes(f.key));
-          return json({
-            results: hits.map((f) => ({
-              id: f.id,
+  await worker.evaluate(
+    ({ films, serverOrigin }) => {
+      const g = globalThis as unknown as { fetch: typeof fetch; asked: string[] };
+      const real = g.fetch.bind(globalThis);
+      g.asked = [];
+      const json = (body: unknown) =>
+        new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
+      g.fetch = async (input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        g.asked.push(url.hostname);
+        if (url.origin === serverOrigin) {
+          if (url.pathname === '/v1/search') {
+            const q = (url.searchParams.get('query') ?? '').toLowerCase();
+            return json(
+              films
+                .filter((f) => q.includes(f.key))
+                .map((f) => ({
+                  tmdbId: f.id,
+                  title: f.title,
+                  originalTitle: f.title,
+                  releaseDate: f.date,
+                  year: Number(f.date.slice(0, 4)),
+                  posterPath: null,
+                  popularity: 50,
+                  voteCount: f.votes,
+                })),
+            );
+          }
+          const movie = /^\/v1\/movie\/(\d+)$/.exec(url.pathname);
+          const rating = /^\/v1\/rating\/(.+)$/.exec(url.pathname);
+          const f = movie
+            ? films.find((m) => m.id === Number(movie[1]))
+            : films.find((m) => m.imdb === rating?.[1]);
+          if (!f) return new Response('{"error":"not-found"}', { status: 404 });
+          if (movie) {
+            return json({
+              tmdbId: f.id,
               title: f.title,
-              original_title: f.title,
-              release_date: f.date,
-              vote_count: f.votes,
-              popularity: 50,
-            })),
+              originalTitle: f.title,
+              year: Number(f.date.slice(0, 4)),
+              runtime: 120,
+              genres: [],
+              overview: '',
+              posterPath: null,
+              imdbId: f.imdb,
+              tmdbRating: f.tmdb,
+              tmdbVotes: f.votes,
+            });
+          }
+          return json({ rating: f.imdbRating, votes: f.imdbRating ? 1000 : null });
+        }
+        if (url.hostname === 'api.themoviedb.org') {
+          if (url.pathname === '/3/search/movie') {
+            const q = (url.searchParams.get('query') ?? '').toLowerCase();
+            const hits = films.filter((f) => q.includes(f.key));
+            return json({
+              results: hits.map((f) => ({
+                id: f.id,
+                title: f.title,
+                original_title: f.title,
+                release_date: f.date,
+                vote_count: f.votes,
+                popularity: 50,
+              })),
+            });
+          }
+          const f = films.find((m) => url.pathname === `/3/movie/${m.id}`);
+          if (!f) return new Response('{}', { status: 404 });
+          return json({
+            id: f.id,
+            title: f.title,
+            original_title: f.title,
+            release_date: f.date,
+            imdb_id: f.imdb,
+            vote_average: f.tmdb,
+            vote_count: f.votes,
           });
         }
-        const f = films.find((m) => url.pathname === `/3/movie/${m.id}`);
-        if (!f) return new Response('{}', { status: 404 });
-        return json({
-          id: f.id,
-          title: f.title,
-          original_title: f.title,
-          release_date: f.date,
-          imdb_id: f.imdb,
-          vote_average: f.tmdb,
-          vote_count: f.votes,
-        });
-      }
-      if (url.hostname === 'www.omdbapi.com') {
-        const f = films.find((m) => m.imdb === url.searchParams.get('i'));
-        const rating = f?.imdbRating ? String(f.imdbRating) : 'N/A';
-        return json({ Response: 'True', imdbRating: rating, imdbVotes: '1,000' });
-      }
-      return real(input, init);
-    };
-  }, FILMS);
+        if (url.hostname === 'www.omdbapi.com') {
+          const f = films.find((m) => m.imdb === url.searchParams.get('i'));
+          const rating = f?.imdbRating ? String(f.imdbRating) : 'N/A';
+          return json({ Response: 'True', imdbRating: rating, imdbVotes: '1,000' });
+        }
+        return real(input, init);
+      };
+    },
+    { films: FILMS, serverOrigin: SERVER_ORIGIN },
+  );
+  return {
+    asked: () => worker.evaluate(() => (globalThis as unknown as { asked: string[] }).asked),
+  };
 }
 
-test('asks for API keys when none are set', async () => {
+test('shows ratings through the ratings server without own keys', async () => {
+  const apis = await mockMovieApis();
+
   const page = await context.newPage();
   await page.goto(PAGE_URL);
-  await page.locator('#poster-dune').hover();
-  await expect(page.locator('worth-it-card')).toHaveAttribute('data-state', 'error:missing-keys', {
+  await expect(page.locator('worth-it-tag[data-tmdb="693134"]')).toHaveAttribute(
+    'data-score',
+    '8.5',
+    { timeout: 10_000 },
+  );
+  await page.locator('#poster-unfassbaren').hover();
+  await expect(page.locator('worth-it-card')).toHaveAttribute('data-state', 'match', {
     timeout: 5000,
   });
+  const hosts = new Set(await apis.asked());
+  expect(hosts.has(new URL(SERVER_ORIGIN).hostname)).toBe(true);
+  expect(hosts.has('api.themoviedb.org') || hosts.has('www.omdbapi.com')).toBe(false);
 });
 
 test('shows the IMDb rating for a hovered poster', async () => {

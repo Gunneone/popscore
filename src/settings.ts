@@ -5,6 +5,7 @@ import type { SiteList, SiteSettings } from './sites';
 export type LinkTarget = 'imdb' | 'letterboxd';
 
 export interface Settings extends SiteSettings {
+  /** Own API keys, optional: each one replaces the ratings server for its service. */
   tmdbKey: string;
   omdbKey: string;
   /** Default site ids (see sites.ts) or extra site patterns where auto-hover is switched off. */
@@ -39,8 +40,8 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 /**
- * Score tags stop asking OMDb for new ratings at this many calls a day (free keys allow 1,000),
- * so the card always has lookups left.
+ * With an own OMDb key, score tags stop asking OMDb for new ratings at this many calls a day (free
+ * keys allow 1,000), so the card always has lookups left.
  */
 export const TAG_OMDB_BUDGET = 800;
 
@@ -58,10 +59,6 @@ export async function updateSettings(patch: Partial<Settings>): Promise<Settings
 
 export function watchSettings(cb: (s: Settings) => void): () => void {
   return settingsItem.watch((v) => cb({ ...DEFAULT_SETTINGS, ...v }));
-}
-
-export function hasKeys(s: Settings): boolean {
-  return s.tmdbKey.trim() !== '' && s.omdbKey.trim() !== '';
 }
 
 /** "Wrong movie?" corrections: normalized hovered text -> TMDB id. Synced, so capped. */

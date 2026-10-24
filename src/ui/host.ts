@@ -38,7 +38,7 @@ export class CardHost {
     return node === this.host;
   }
 
-  /** `state` is mirrored on the host element (e.g. "match", "error:missing-keys") for e2e tests. */
+  /** `state` is mirrored on the host element (e.g. "match", "error:offline") for e2e tests. */
   show(card: VNode, anchor: Rect, state = ''): void {
     if (!this.host.isConnected) document.documentElement.append(this.host);
     this.host.dataset.state = state;

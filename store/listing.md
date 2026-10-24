@@ -24,7 +24,7 @@ shows a card with the details when you rest your pointer on a title or poster:
 • Understands German titles ("Die Unfassbaren" → Now You See Me)
 • "Wrong movie?" lets you pick the right film; your choice is remembered
 • One click to the film on IMDb or Letterboxd (your choice)
-• No account, no tracking. Uses your own free TMDB and OMDb API keys (setup takes ~3 minutes)
+• No account, no setup, no tracking. Works right after install; optionally use your own free TMDB and OMDb API keys
 
 Movie data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.
 IMDb ratings via the OMDb API. Not affiliated with IMDb.
@@ -43,11 +43,13 @@ user points at a title.
 - **Host permissions for the listed cinema/streaming sites (content script)**: read the title of
   the element under the pointer, and of the movies in view for the score tags, and display the
   rating card and tags on those pages.
-- **api.themoviedb.org, image.tmdb.org, www.omdbapi.com**: look up the movie, its poster and its
-  IMDb rating.
+- **The Worth It? ratings server**: look up the movie and its IMDb rating without the user needing
+  API keys of their own.
+- **api.themoviedb.org, image.tmdb.org, www.omdbapi.com**: load the poster, and look up the movie
+  and its IMDb rating directly when the user entered their own API keys.
 - **Optional host permissions (`<all_urls>`)**: requested only when the user turns on "Alt-hover
   on every site" or enables an additional site from the toolbar.
-- **storage**: settings, API keys, cache of looked-up ratings.
+- **storage**: settings, optional API keys, cache of looked-up ratings.
 - **scripting**: register the content script for sites the user enabled.
 - **activeTab**: read the current tab's address in the toolbar popup and start the card there right
   after the user enables the site.
@@ -56,7 +58,8 @@ user points at a title.
 ## Chrome Web Store: data usage disclosure
 
 - Collected: **Website content** (the title text under the pointer, or of movies in view for the
-  score tags, sent to TMDB for the lookup).
+  score tags, sent to the Worth It? ratings server for the lookup, or to TMDB with the user's own
+  key). The server doesn't log it or tie it to the user; it caches movie data for up to 7 days.
 - Not sold, not used for anything except the single purpose, not used for creditworthiness.
 
 ## Firefox (AMO)
@@ -72,3 +75,4 @@ user points at a title.
 - Screenshots 1280×800 (card on a cinema page, on Netflix, the settings page)
 - Small promo tile 440×280 (Chrome)
 - Hosted privacy policy URL (publish PRIVACY.md, e.g. via GitHub Pages)
+- The ratings server deployed, with its address as `DEFAULT_SERVER_URL` in `src/sites.ts`

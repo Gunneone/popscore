@@ -27,9 +27,9 @@ function KeyStatus({ state }: { state: KeyTestResult['tmdb'] | undefined }) {
     ok: 'Key works',
     invalid: 'Key was rejected',
     error: "Couldn't check the key (network?)",
-    missing: 'No key yet',
+    missing: 'No key: the Worth It? server is used',
   }[state];
-  const cls = state === 'ok' ? 'ok' : state === 'invalid' ? 'bad' : 'warn';
+  const cls = { ok: 'ok', invalid: 'bad', error: 'warn', missing: '' }[state];
   return <span class={`status small ${cls}`}>{text}</span>;
 }
 
@@ -38,6 +38,8 @@ function ApiKeys({ settings }: { settings: Settings }) {
   const [omdbKey, setOmdbKey] = useState(settings.omdbKey);
   const [test, setTest] = useState<KeyTestResult | null>(null);
   const [busy, setBusy] = useState(false);
+  // Open when keys are set; afterwards it's the user's to open and close.
+  const [initiallyOpen] = useState(settings.tmdbKey !== '' || settings.omdbKey !== '');
 
   const save = async (e: Event) => {
     e.preventDefault();
@@ -50,75 +52,80 @@ function ApiKeys({ settings }: { settings: Settings }) {
   return (
     <section class="panel">
       <h2>
-        <span class="step">1</span> API keys
+        <span class="step">1</span> Your own API keys (optional)
       </h2>
       <p class="muted">
-        Worth It? looks movies up on TMDB and reads the IMDb rating from OMDb. Both are free; you
-        need one key from each. They're stored in your browser profile and only sent to those two
-        services.
+        Worth It? looks movies up on TMDB and reads the IMDb rating from OMDb. Out of the box the
+        Worth It? server does both for you, so there's nothing to set up. To stay independent of it,
+        add your own free keys: each one replaces the server for its service, and with both the
+        extension never contacts it. Keys are stored in your browser profile and only sent to TMDB
+        and OMDb.
       </p>
-      <form onSubmit={save}>
-        <div class="key">
-          <label for="tmdb">
-            <b>TMDB</b> API key or Read Access Token
-          </label>
-          <ol class="small muted">
-            <li>
-              Create a free account at{' '}
-              <a href="https://www.themoviedb.org/signup" target="_blank" rel="noopener">
-                themoviedb.org
-              </a>
-              .
-            </li>
-            <li>
-              Open{' '}
-              <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">
-                Settings → API
-              </a>{' '}
-              and request a <i>Developer</i> key (personal, non-commercial use).
-            </li>
-            <li>Copy the “API Key” (or the longer “API Read Access Token”) and paste it here.</li>
-          </ol>
-          <input
-            id="tmdb"
-            value={tmdbKey}
-            onInput={(e) => setTmdbKey(e.currentTarget.value)}
-            spellcheck={false}
-            autocomplete="off"
-            placeholder="e.g. 3f2a…"
-          />
-          <KeyStatus state={test?.tmdb} />
-        </div>
-        <div class="key">
-          <label for="omdb">
-            <b>OMDb</b> API key
-          </label>
-          <ol class="small muted">
-            <li>
-              Go to{' '}
-              <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener">
-                omdbapi.com/apikey.aspx
-              </a>
-              , choose <i>FREE (1,000 daily limit)</i> and enter your email.
-            </li>
-            <li>
-              Click the activation link in the email, then paste the key from that email here.
-            </li>
-          </ol>
-          <input
-            id="omdb"
-            value={omdbKey}
-            onInput={(e) => setOmdbKey(e.currentTarget.value)}
-            spellcheck={false}
-            autocomplete="off"
-            placeholder="e.g. a1b2c3d4"
-          />
-          <KeyStatus state={test?.omdb} />
-        </div>
-        <button class="btn primary" type="submit" disabled={busy}>
-          {busy ? 'Checking…' : 'Save and test keys'}
-        </button>
-      </form>
+      <details class="own-keys" open={initiallyOpen}>
+        <summary>Use my own keys</summary>
+        <form onSubmit={save}>
+          <div class="key">
+            <label for="tmdb">
+              <b>TMDB</b> API key or Read Access Token
+            </label>
+            <ol class="small muted">
+              <li>
+                Create a free account at{' '}
+                <a href="https://www.themoviedb.org/signup" target="_blank" rel="noopener">
+                  themoviedb.org
+                </a>
+                .
+              </li>
+              <li>
+                Open{' '}
+                <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">
+                  Settings → API
+                </a>{' '}
+                and request a <i>Developer</i> key (personal, non-commercial use).
+              </li>
+              <li>Copy the “API Key” (or the longer “API Read Access Token”) and paste it here.</li>
+            </ol>
+            <input
+              id="tmdb"
+              value={tmdbKey}
+              onInput={(e) => setTmdbKey(e.currentTarget.value)}
+              spellcheck={false}
+              autocomplete="off"
+              placeholder="e.g. 3f2a…"
+            />
+            <KeyStatus state={test?.tmdb} />
+          </div>
+          <div class="key">
+            <label for="omdb">
+              <b>OMDb</b> API key
+            </label>
+            <ol class="small muted">
+              <li>
+                Go to{' '}
+                <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener">
+                  omdbapi.com/apikey.aspx
+                </a>
+                , choose <i>FREE (1,000 daily limit)</i> and enter your email.
+              </li>
+              <li>
+                Click the activation link in the email, then paste the key from that email here.
+              </li>
+            </ol>
+            <input
+              id="omdb"
+              value={omdbKey}
+              onInput={(e) => setOmdbKey(e.currentTarget.value)}
+              spellcheck={false}
+              autocomplete="off"
+              placeholder="e.g. a1b2c3d4"
+            />
+            <KeyStatus state={test?.omdb} />
+          </div>
+          <button class="btn primary" type="submit" disabled={busy}>
+            {busy ? 'Checking…' : 'Save and test keys'}
+          </button>
+        </form>
+      </details>
     </section>
   );
 }
@@ -213,8 +220,13 @@ function CardSettings({ settings }: { settings: Settings }) {
             <br />
             <span class="muted small">
               A small score on every movie you scroll past on the sites above, in the verdict color.
-              Each new film uses an OMDb lookup; past {TAG_OMDB_BUDGET} today, tags show TMDB's
-              score and the rest is kept for the card.
+              {settings.omdbKey && (
+                <>
+                  {' '}
+                  Each new film uses an OMDb lookup on your key; past {TAG_OMDB_BUDGET} today, tags
+                  show TMDB's score and the rest is kept for the card.
+                </>
+              )}
             </span>
           </span>
         </label>
@@ -247,7 +259,7 @@ function CardSettings({ settings }: { settings: Settings }) {
   );
 }
 
-function Data() {
+function Data({ settings }: { settings: Settings }) {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [cleared, setCleared] = useState(false);
   useEffect(() => {
@@ -257,14 +269,21 @@ function Data() {
   return (
     <section class="panel">
       <h2>Data</h2>
-      <p>
-        OMDb lookups today: <b>{usage?.omdbCalls ?? '–'}</b> of{' '}
-        {OMDB_DAILY_LIMIT.toLocaleString('en')}{' '}
-        <span class="muted small">
-          (ratings are cached for 3 days, so repeat views are free; score tags stop at{' '}
-          {TAG_OMDB_BUDGET})
-        </span>
-      </p>
+      {settings.omdbKey ? (
+        <p>
+          OMDb lookups on your key today: <b>{usage?.omdbCalls ?? '–'}</b> of{' '}
+          {OMDB_DAILY_LIMIT.toLocaleString('en')}{' '}
+          <span class="muted small">
+            (ratings are cached for up to 3 days, so repeat views are free; score tags stop at{' '}
+            {TAG_OMDB_BUDGET})
+          </span>
+        </p>
+      ) : (
+        <p class="muted small">
+          Ratings are cached in your browser for up to 3 days, and on the Worth It? server for up to
+          a week, so repeat views are instant.
+        </p>
+      )}
       <button
         class="btn"
         type="button"
@@ -274,9 +293,11 @@ function Data() {
       </button>
       <p class="muted small privacy">
         <b>Privacy:</b> when you point at a title, or with score tags on, when a movie comes into
-        view on a site above, its title text is sent to TMDB to find the movie, and the movie's IMDb
-        id is sent to OMDb for the rating. Nothing else leaves your browser: no browsing history, no
-        analytics, no account.
+        view on a site above, its title text and the page's language are sent to find the movie, and
+        the movie's IMDb id to get the rating. Without your own keys they go to the Worth It?
+        server, which asks TMDB and OMDb for you and keeps no record of who asked; with your own
+        key, that service is asked directly. Nothing else leaves your browser: no browsing history,
+        no analytics, no account.
       </p>
     </section>
   );
@@ -298,14 +319,14 @@ function Options() {
       </header>
       {welcome && (
         <div class="welcome">
-          <b>Welcome!</b> Two free API keys and you're set; it takes about 3 minutes. Then point at
-          a movie on Netflix, Prime Video, Disney+ or your cinema's website.
+          <b>Welcome!</b> You're all set: point at a movie on Netflix, Prime Video, Disney+ or your
+          cinema's website. There's nothing to sign up for; your own API keys below are optional.
         </div>
       )}
       <ApiKeys settings={settings} />
       <Sites settings={settings} />
       <CardSettings settings={settings} />
-      <Data />
+      <Data settings={settings} />
       <footer class="muted small">
         Movie data and posters from{' '}
         <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">

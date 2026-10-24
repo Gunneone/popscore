@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 dist
+# Ratings server cache (npm run server:dev)
+data
 stats.html
 stats-*.json
 .wxt
