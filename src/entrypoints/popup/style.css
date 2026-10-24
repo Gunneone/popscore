@@ -1,35 +1,208 @@
 body {
-  width: 300px;
-  background: var(--panel);
+  width: 320px;
+  background: var(--bg);
 }
 
 .popup {
-  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
 }
 
 .popup header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.logo {
+  border-radius: 6px;
 }
 
 .popup h1 {
-  font-size: 16px;
+  flex: 1;
+  font-size: 15px;
 }
 
-.popup section {
-  padding: 10px 0;
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: var(--chip);
+  color: var(--fg);
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+div.row {
+  cursor: default;
+}
+
+.card > .row + .row {
   border-top: 1px solid var(--line);
 }
 
-.popup section p {
-  margin: 8px 0 0;
+.row-text {
+  flex: 1;
+  min-width: 0;
 }
 
-.popup footer {
-  padding-top: 8px;
+.row-title {
+  display: block;
+  font-weight: 600;
+}
+
+.row-hint {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.site-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.site-name img {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+.unavailable {
+  margin: 0;
+  padding: 14px;
+  color: var(--muted);
+}
+
+/* An on/off switch drawn over a plain checkbox, so it keeps its keyboard and label behaviour. */
+.toggle {
+  flex: none;
+  position: relative;
+  width: 38px;
+  height: 22px;
+  margin: 0;
+  border-radius: 11px;
+  background: var(--line);
+  appearance: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  transition: transform 0.15s;
+}
+
+.toggle:checked {
+  background: var(--accent);
+}
+
+.toggle:checked::after {
+  transform: translateX(16px);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.toggle:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+}
+
+.chips button {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chips button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* The last kind that's on can't be switched off; it just doesn't react. */
+.chips button:disabled {
+  cursor: default;
+}
+
+.note {
+  margin: 0;
+  padding: 10px 14px;
   border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.note.reload {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.note.reload span {
+  flex: 1;
+}
+
+.note .btn {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.tip {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .link {
