@@ -298,13 +298,13 @@ test('falls back to the TMDB score for a new release OMDb has no rating for yet'
   await page.screenshot({ path: 'test-results/card-digger.png' });
 });
 
-test('links to Letterboxd when chosen in the settings', async () => {
+test('links to TMDB when chosen in the settings', async () => {
   const { TMDB_KEY, OMDB_KEY } = process.env;
   test.skip(
     !TMDB_KEY || !OMDB_KEY,
     'Set TMDB_KEY and OMDB_KEY (e.g. in .env) to run the live lookup.',
   );
-  await setKeys(TMDB_KEY!, OMDB_KEY!, { linkTo: 'letterboxd' });
+  await setKeys(TMDB_KEY!, OMDB_KEY!, { movieLink: 'tmdb' });
 
   const page = await context.newPage();
   await page.goto(PAGE_URL);
@@ -312,7 +312,7 @@ test('links to Letterboxd when chosen in the settings', async () => {
   await expect(page.locator('popscore-card')).toHaveAttribute('data-state', 'match', {
     timeout: 10_000,
   });
-  await page.screenshot({ path: 'test-results/card-letterboxd.png' });
+  await page.screenshot({ path: 'test-results/card-tmdb.png' });
 });
 
 test('dwelling on a TV show never shows a card, not even a loading one', async () => {

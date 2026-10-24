@@ -24,7 +24,7 @@ websites, and shows a card with the details when you rest your pointer on a titl
 • Switch it on for any other site from the toolbar button, or hold Alt (⌥) to look up any title anywhere
 • Understands German titles ("Die Unfassbaren" → Now You See Me)
 • "Wrong movie?" lets you pick the right title; your choice is remembered
-• One click to the title on IMDb, or to films on Letterboxd (your choice)
+• One click to the title on Letterboxd, IMDb or TMDB (your choice, for films and shows separately)
 • No account, no setup, no tracking. Works right after install; optionally use your own free TMDB and OMDb API keys
 
 Movie data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.

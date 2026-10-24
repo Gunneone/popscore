@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { normalizeTitle } from '../match/normalize';
-import type { LinkTarget } from '../settings';
+import type { MovieLink, ShowLink } from '../settings';
 import { titleKey, type LookupError, type LookupResult, type MovieSummary } from '../types';
-import { displayScore, formatRuntime, formatVotes, formatYears, verdict } from './format';
+import { cardLink, displayScore, formatRuntime, formatVotes, formatYears, verdict } from './format';
 
 export type CardState = { kind: 'loading' } | { kind: 'result'; result: LookupResult };
 
@@ -10,7 +10,8 @@ export interface CardProps {
   state: CardState;
   greenAt: number;
   amberAt: number;
-  linkTo: LinkTarget;
+  movieLink: MovieLink;
+  showLink: ShowLink;
   onPick(query: string, movie: MovieSummary, pool: MovieSummary[]): void;
   onSearch(original: string, text: string): void;
   onOpenSettings(): void;
@@ -131,15 +132,7 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
     voteCount: 0,
   };
   const ratingNote = result.ratingError ? RATING_ERROR_TEXT[result.ratingError] : undefined;
-  // Letterboxd only has films: shows go to IMDb, or TMDB when IMDb doesn't know them.
-  const link =
-    props.linkTo === 'letterboxd' && !show
-      ? { href: `https://letterboxd.com/tmdb/${m.tmdbId}/`, label: 'Letterboxd' }
-      : m.imdbId
-        ? { href: `https://www.imdb.com/title/${m.imdbId}/`, label: 'IMDb' }
-        : show
-          ? { href: `https://www.themoviedb.org/tv/${m.tmdbId}`, label: 'TMDB' }
-          : null;
+  const link = cardLink(m, props);
 
   return (
     <>
@@ -188,11 +181,9 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
         <button class="link" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
           {open ? 'Close ▴' : show ? 'Wrong show? ▾' : 'Wrong movie? ▾'}
         </button>
-        {link && (
-          <a class="link" href={link.href} target="_blank" rel="noopener noreferrer">
-            Open on {link.label} ↗
-          </a>
-        )}
+        <a class="link" href={link.href} target="_blank" rel="noopener noreferrer">
+          Open on {link.label} ↗
+        </a>
       </div>
       {open && (
         <Picker

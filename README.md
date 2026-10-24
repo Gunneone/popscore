@@ -20,8 +20,8 @@ is worth it.
 - New releases: OMDb's copy of IMDb ratings lags a few weeks behind, so until it has one the card
   shows TMDB's user score instead, clearly labelled "/10 TMDB".
 - **Wrong movie?** opens the other close matches and a search box; your pick is remembered.
-- The card links to the title on IMDb, or on Letterboxd if you pick that in the settings (Letterboxd
-  has no TV shows, so shows still link to IMDb).
+- The card links films to Letterboxd and shows to IMDb by default; pick IMDb, TMDB or Letterboxd for
+  films and IMDb or TMDB for shows in the settings (Letterboxd has no TV shows).
 - Movies, TV shows or both: pick in the settings (both by default). Cinema pages only look up films
   unless you hold Alt. Where only films are looked up (TV shows switched off, or a cinema page), a
   tile that names a popular TV series ("Wednesday", "Friends") gets no card or tag, even when TMDB

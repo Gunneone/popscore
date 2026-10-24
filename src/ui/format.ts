@@ -1,3 +1,4 @@
+import type { MovieLink, ShowLink } from '../settings';
 import type { MediaKind } from '../types';
 
 export type Verdict = 'good' | 'okay' | 'bad' | 'none';
@@ -56,4 +57,24 @@ export function formatRuntime(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+}
+
+export interface CardLink {
+  href: string;
+  label: 'IMDb' | 'TMDB' | 'Letterboxd';
+}
+
+/** The card's "Open on …" link: the chosen site, or TMDB for titles IMDb doesn't know yet. */
+export function cardLink(
+  m: { kind: MediaKind; tmdbId: number; imdbId: string | null },
+  links: { movieLink: MovieLink; showLink: ShowLink },
+): CardLink {
+  const target = m.kind === 'tv' ? links.showLink : links.movieLink;
+  if (target === 'letterboxd') {
+    return { href: `https://letterboxd.com/tmdb/${m.tmdbId}/`, label: 'Letterboxd' };
+  }
+  if (target === 'imdb' && m.imdbId) {
+    return { href: `https://www.imdb.com/title/${m.imdbId}/`, label: 'IMDb' };
+  }
+  return { href: `https://www.themoviedb.org/${m.kind}/${m.tmdbId}`, label: 'TMDB' };
 }

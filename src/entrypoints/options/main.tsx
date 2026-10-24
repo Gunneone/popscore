@@ -7,8 +7,9 @@ import {
   TAG_OMDB_BUDGET,
   updateSettings,
   watchSettings,
-  type LinkTarget,
+  type MovieLink,
   type Settings,
+  type ShowLink,
 } from '@/settings';
 import type { KeyTestResult, Usage } from '@/types';
 import '@/ui/pages.css';
@@ -182,9 +183,16 @@ function Sites({ settings }: { settings: Settings }) {
   );
 }
 
-const LINK_TARGETS: [LinkTarget, string][] = [
+const MOVIE_LINKS: [MovieLink, string][] = [
   ['imdb', 'IMDb'],
+  ['tmdb', 'TMDB'],
   ['letterboxd', 'Letterboxd'],
+];
+
+// Letterboxd only has films.
+const SHOW_LINKS: [ShowLink, string][] = [
+  ['imdb', 'IMDb'],
+  ['tmdb', 'TMDB'],
 ];
 
 const KINDS: ['movies' | 'tvShows', string][] = [
@@ -267,15 +275,31 @@ function CardSettings({ settings }: { settings: Settings }) {
         />
       </div>
       <div class="field">
-        <span>“Open on …” link goes to</span>
+        <span>“Open on …” link for movies goes to</span>
         <div class="row">
-          {LINK_TARGETS.map(([value, name]) => (
+          {MOVIE_LINKS.map(([value, name]) => (
             <label key={value}>
               <input
                 type="radio"
-                name="linkTo"
-                checked={settings.linkTo === value}
-                onChange={() => void updateSettings({ linkTo: value })}
+                name="movieLink"
+                checked={settings.movieLink === value}
+                onChange={() => void updateSettings({ movieLink: value })}
+              />{' '}
+              {name}
+            </label>
+          ))}
+        </div>
+      </div>
+      <div class="field">
+        <span>“Open on …” link for TV shows goes to</span>
+        <div class="row">
+          {SHOW_LINKS.map(([value, name]) => (
+            <label key={value}>
+              <input
+                type="radio"
+                name="showLink"
+                checked={settings.showLink === value}
+                onChange={() => void updateSettings({ showLink: value })}
               />{' '}
               {name}
             </label>

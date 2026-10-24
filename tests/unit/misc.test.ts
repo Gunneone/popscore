@@ -11,6 +11,7 @@ import {
 } from '../../src/sites';
 import { mediaKinds } from '../../src/settings';
 import {
+  cardLink,
   displayScore,
   formatRuntime,
   formatVotes,
@@ -177,6 +178,28 @@ describe('format', () => {
     expect(formatYears({ kind: 'tv', year: 2019, lastYear: 2025, ended: false })).toBe('2019–');
     expect(formatYears({ kind: 'tv', year: 2019, lastYear: 2019, ended: true })).toBe('2019');
     expect(formatYears({ kind: 'movie' })).toBeNull();
+  });
+
+  it('links films and shows to the site chosen for each', () => {
+    const film = { kind: 'movie' as const, tmdbId: 1437696, imdbId: 'tt123' };
+    const show = { kind: 'tv' as const, tmdbId: 1399, imdbId: 'tt0944947' };
+    const links = { movieLink: 'letterboxd' as const, showLink: 'imdb' as const };
+    expect(cardLink(film, links)).toEqual({
+      href: 'https://letterboxd.com/tmdb/1437696/',
+      label: 'Letterboxd',
+    });
+    expect(cardLink(show, links)).toEqual({
+      href: 'https://www.imdb.com/title/tt0944947/',
+      label: 'IMDb',
+    });
+    expect(cardLink(film, { ...links, movieLink: 'tmdb' }).href).toBe(
+      'https://www.themoviedb.org/movie/1437696',
+    );
+    expect(cardLink(show, { ...links, showLink: 'tmdb' }).href).toBe(
+      'https://www.themoviedb.org/tv/1399',
+    );
+    // IMDb doesn't know every new title yet.
+    expect(cardLink({ ...film, imdbId: null }, { ...links, movieLink: 'imdb' }).label).toBe('TMDB');
   });
 });
 

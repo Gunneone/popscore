@@ -3,7 +3,9 @@ import { storage } from 'wxt/utils/storage';
 import type { SiteList, SiteSettings } from './sites';
 import type { MediaKind } from './types';
 
-export type LinkTarget = 'imdb' | 'letterboxd';
+export type MovieLink = 'imdb' | 'tmdb' | 'letterboxd';
+/** Letterboxd only has films. */
+export type ShowLink = 'imdb' | 'tmdb';
 
 export interface Settings extends SiteSettings {
   /** Own API keys, optional: each one replaces the ratings server for its service. */
@@ -21,8 +23,10 @@ export interface Settings extends SiteSettings {
   greenAt: number;
   /** Ratings at or above this (and below greenAt) are amber; below is red. */
   amberAt: number;
-  /** Where the card's "Open on …" link goes. */
-  linkTo: LinkTarget;
+  /** Where the card's "Open on …" link goes for a film. */
+  movieLink: MovieLink;
+  /** Where it goes for a TV show. */
+  showLink: ShowLink;
   /** A small score tag on every movie on enabled sites, not just the card on hover. */
   scoreTags: boolean;
   /** Look up movies. At least one of `movies` and `tvShows` is on. */
@@ -40,7 +44,8 @@ export const DEFAULT_SETTINGS: Settings = {
   dwellMs: 500,
   greenAt: 7,
   amberAt: 6,
-  linkTo: 'imdb',
+  movieLink: 'letterboxd',
+  showLink: 'imdb',
   scoreTags: true,
   movies: true,
   tvShows: true,
