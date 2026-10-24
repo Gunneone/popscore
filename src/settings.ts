@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 import { storage } from 'wxt/utils/storage';
 import type { SiteList, SiteSettings } from './sites';
+import type { MediaKind } from './types';
 
 export type LinkTarget = 'imdb' | 'letterboxd';
 
@@ -23,6 +24,10 @@ export interface Settings extends SiteSettings {
   linkTo: LinkTarget;
   /** A small score tag on every movie on enabled sites, not just the card on hover. */
   scoreTags: boolean;
+  /** Look up movies. At least one of `movies` and `tvShows` is on. */
+  movies: boolean;
+  /** Look up TV shows. */
+  tvShows: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -36,6 +41,8 @@ export const DEFAULT_SETTINGS: Settings = {
   amberAt: 6,
   linkTo: 'imdb',
   scoreTags: true,
+  movies: true,
+  tvShows: true,
 };
 
 /**
@@ -64,23 +71,40 @@ export function hasKeys(s: Settings): boolean {
   return s.tmdbKey.trim() !== '' && s.omdbKey.trim() !== '';
 }
 
+/** What to look up. Movies if both are somehow off: the settings page doesn't allow that. */
+export function mediaKinds(s: Pick<Settings, 'movies' | 'tvShows'>): MediaKind[] {
+  const kinds: MediaKind[] = [];
+  if (s.movies) kinds.push('movie');
+  if (s.tvShows) kinds.push('tv');
+  return kinds.length ? kinds : ['movie'];
+}
+
 /** "Wrong movie?" corrections: normalized hovered text -> TMDB id. Synced, so capped. */
-interface Pick {
+interface SavedPick {
   id: number;
+  /** Missing on picks from before TV shows, which were all movies. */
+  kind?: 'tv';
   at: number;
 }
 const MAX_PICKS = 150;
-const picksItem = storage.defineItem<Record<string, Pick>>('sync:picks', { fallback: {} });
+const picksItem = storage.defineItem<Record<string, SavedPick>>('sync:picks', { fallback: {} });
 
-export async function getPick(normalizedQuery: string): Promise<number | undefined> {
-  return (await picksItem.getValue())[normalizedQuery]?.id;
+export interface PickRef {
+  kind: MediaKind;
+  tmdbId: number;
 }
 
-export async function savePick(normalizedQuery: string, tmdbId: number): Promise<void> {
-  const picks = {
-    ...(await picksItem.getValue()),
-    [normalizedQuery]: { id: tmdbId, at: Date.now() },
-  };
+export async function getPick(normalizedQuery: string): Promise<PickRef | undefined> {
+  const pick = (await picksItem.getValue())[normalizedQuery];
+  return pick && { kind: pick.kind ?? 'movie', tmdbId: pick.id };
+}
+
+export async function savePick(normalizedQuery: string, ref: PickRef): Promise<void> {
+  const saved: SavedPick =
+    ref.kind === 'tv'
+      ? { id: ref.tmdbId, kind: 'tv', at: Date.now() }
+      : { id: ref.tmdbId, at: Date.now() };
+  const picks = { ...(await picksItem.getValue()), [normalizedQuery]: saved };
   const keys = Object.keys(picks);
   if (keys.length > MAX_PICKS) {
     keys

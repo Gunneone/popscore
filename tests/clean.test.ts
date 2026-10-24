@@ -86,11 +86,11 @@ describe('cleanTitle', () => {
     'Sneak Preview',
     'Sneak Preview (OV)',
     'CineSneak OV: The original surprise preview',
-    'Stranger Things Staffel 4',
-    'The Crown: Season 2',
+    // Seasons and episodes with no show title in front:
     'Folge 3',
     'S01:E04',
-    'Dark (Miniserie)',
+    'Staffel 2',
+    '3 Staffeln',
     'Jetzt ansehen',
     // Control labels (a cinestar.de notice's close button matched the film "Close"):
     'Close',
@@ -141,6 +141,26 @@ describe('cleanTitle', () => {
     'This is a long sentence describing the plot of a film in a lot of words here',
   ])('rejects %j', (raw) => {
     expect(cleanTitle(raw)).toBeNull();
+  });
+});
+
+describe('cleanTitle on TV shows', () => {
+  it.each([
+    ['Stranger Things Staffel 4', 'Stranger Things'],
+    ['The Crown: Season 2', 'The Crown'],
+    ['The Crown: Season 4, Episode 1', 'The Crown'],
+    ['Dark 2. Staffel', 'Dark'],
+    ['Dark (Miniserie)', 'Dark'],
+    ['Chernobyl – Limited Series', 'Chernobyl'],
+    ['Babylon Berlin S01:E04', 'Babylon Berlin'],
+    ['Fargo | TV Show', 'Fargo'],
+    ['Dark - Serien', 'Dark'],
+  ])('%j -> %j, flagged as a series', (raw, title) => {
+    expect(cleanTitle(raw)).toEqual({ title, series: true });
+  });
+
+  it('keeps titles that only look like seasons', () => {
+    expect(cleanTitle('Season of the Witch')).toEqual({ title: 'Season of the Witch' });
   });
 });
 

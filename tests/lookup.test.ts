@@ -6,14 +6,15 @@ import { clearCache } from '../src/cache';
 import { lookup, pickMovie, tmdbLanguage } from '../src/lookup';
 import { saveSeriesList } from '../src/series';
 import { getUsage, updateSettings } from '../src/settings';
-import type { LookupRequest, MovieDetails, MovieSummary, SeriesSummary } from '../src/types';
+import type { LookupRequest, MediaKind, MovieDetails, MovieSummary } from '../src/types';
 
 const summary = (
   tmdbId: number,
   title: string,
   year: number,
   extra: Partial<MovieSummary> = {},
-) => ({
+): MovieSummary => ({
+  kind: 'movie',
   tmdbId,
   title,
   originalTitle: title,
@@ -54,22 +55,41 @@ const SEARCH: Record<string, MovieSummary[]> = {
   Heldin: [summary(1356670, 'Heldin', 2025, { voteCount: 361, popularity: 6.2 })],
 };
 
-const TV_SEARCH: Record<string, SeriesSummary[]> = {
+const show = (tmdbId: number, title: string, year: number, extra: Partial<MovieSummary> = {}) =>
+  summary(tmdbId, title, year, { kind: 'tv', releaseDate: `${year}-12-01`, ...extra });
+
+const SEARCH_TV: Record<string, MovieSummary[]> = {
+  // TMDB numbers movies and shows separately: Dark has the same id as Die Unfassbaren.
+  Dark: [show(75656, 'Dark', 2017)],
+  // TMDB's de-DE results (October 2026).
   'Haus des Geldes': [
-    { name: 'Haus des Geldes', originalName: 'La casa de papel', popularity: 36 },
-    { name: 'Haus des Geldes: Korea', originalName: '종이의 집: 공동경제구역', popularity: 14.7 },
+    show(71446, 'Haus des Geldes', 2017, {
+      originalTitle: 'La casa de papel',
+      popularity: 36,
+      voteCount: 19756,
+    }),
+    show(112836, 'Haus des Geldes: Korea', 2022, {
+      originalTitle: '종이의 집: 공동경제구역',
+      popularity: 14.7,
+      voteCount: 734,
+    }),
   ],
   Heldin: [
-    { name: 'Unerschrocken! – Echte Heldinnen', originalName: 'Culottées', popularity: 4.2 },
-    { name: 'Heldinnen der Lüfte', originalName: 'Heldinnen der Lüfte', popularity: 0.5 },
+    show(100468, 'Unerschrocken! – Echte Heldinnen', 2018, {
+      originalTitle: 'Culottées',
+      popularity: 4.2,
+      voteCount: 1,
+    }),
+    show(232530, 'Heldinnen der Lüfte', 2024, { popularity: 0.5, voteCount: 1 }),
   ],
 };
 
-const details = (id: number): MovieDetails => {
-  const s = Object.values(SEARCH)
+const details = (id: number, kind: MediaKind = 'movie'): MovieDetails => {
+  const s = Object.values(kind === 'tv' ? SEARCH_TV : SEARCH)
     .flat()
     .find((m) => m.tmdbId === id)!;
-  return {
+  const base = {
+    kind,
     tmdbId: id,
     title: s.originalTitle,
     originalTitle: s.originalTitle,
@@ -82,13 +102,17 @@ const details = (id: number): MovieDetails => {
     tmdbRating: 7.5,
     tmdbVotes: 812,
   };
+  return kind === 'tv'
+    ? { ...base, runtime: 55, imdbId: `tt9${id}`, seasons: 3, lastYear: 2020, ended: true }
+    : base;
 };
 
 function makeProvider(overrides: Partial<RatingsProvider> = {}) {
   return {
-    search: vi.fn(async (q: string) => SEARCH[q] ?? []),
-    searchSeries: vi.fn(async (q: string) => TV_SEARCH[q] ?? []),
-    details: vi.fn(async (id: number) => details(id)),
+    search: vi.fn(
+      async (q: string, o: { kind: MediaKind }) => (o.kind === 'tv' ? SEARCH_TV : SEARCH)[q] ?? [],
+    ),
+    details: vi.fn(async (id: number, kind: MediaKind) => details(id, kind)),
     rating: vi.fn(async () => ({ rating: 7.2, votes: 712_345 })),
     ...overrides,
   } satisfies RatingsProvider;
@@ -103,6 +127,10 @@ const req = (text: string, extra: Partial<LookupRequest> = {}): LookupRequest =>
 });
 
 const fetchPoster = async (p: string) => `data:image/jpeg;base64,${p}`;
+
+/** The searches made for one kind, as [query, options]. */
+const searches = (provider: RatingsProvider, kind: MediaKind) =>
+  vi.mocked(provider.search).mock.calls.filter(([, o]) => o.kind === kind);
 
 beforeEach(async () => {
   fakeBrowser.reset();
@@ -127,6 +155,7 @@ describe('lookup', () => {
       },
     });
     expect(provider.search).toHaveBeenCalledWith('Die Unfassbaren', {
+      kind: 'movie',
       language: 'de-DE',
       year: undefined,
     });
@@ -139,8 +168,10 @@ describe('lookup', () => {
   it('caches searches, details and ratings', async () => {
     const provider = makeProvider();
     await lookup(req('Dune'), { provider, fetchPoster });
+    const searched = vi.mocked(provider.search).mock.calls.length;
     await lookup(req('Dune'), { provider, fetchPoster });
-    expect(provider.search).toHaveBeenCalledTimes(1);
+    expect(searches(provider, 'movie')).toHaveLength(1);
+    expect(provider.search).toHaveBeenCalledTimes(searched);
     expect(provider.details).toHaveBeenCalledTimes(1);
     expect(provider.rating).toHaveBeenCalledTimes(1);
     expect((await getUsage()).omdbCalls).toBe(1);
@@ -148,13 +179,15 @@ describe('lookup', () => {
 
   it('retries without the year when the year hint finds nothing', async () => {
     const provider = makeProvider({
-      search: vi.fn(async (q: string, o: { year?: number }) => (o.year ? [] : (SEARCH[q] ?? []))),
+      search: vi.fn(async (q: string, o: { kind: MediaKind; year?: number }) =>
+        o.year || o.kind === 'tv' ? [] : (SEARCH[q] ?? []),
+      ),
     });
     const result = await lookup(
       { ...req('Dune'), candidates: [{ text: 'Dune', year: 2020, weight: 1, source: 't' }] },
       { provider, fetchPoster },
     );
-    expect(provider.search).toHaveBeenCalledTimes(2);
+    expect(searches(provider, 'movie')).toHaveLength(2);
     expect(result.status).toBe('match');
   });
 
@@ -280,12 +313,9 @@ describe('lookup', () => {
 
     const picked = await pickMovie(
       'Dune',
-      841,
+      { kind: 'movie', tmdbId: 841 },
       first.status === 'match' ? first.alternatives : [],
-      {
-        provider,
-        fetchPoster,
-      },
+      { provider, fetchPoster },
     );
     expect(picked).toMatchObject({ status: 'match', picked: true, movie: { tmdbId: 841 } });
 
@@ -311,6 +341,7 @@ describe('lookup', () => {
           ],
         });
       }
+      if (u.pathname === '/3/search/tv') return Response.json({ results: [] });
       if (u.pathname === '/3/movie/1') {
         return Response.json({
           id: 1,
@@ -348,71 +379,229 @@ describe('lookup', () => {
     });
     vi.unstubAllGlobals();
   });
+
+  it('finds a TV show and its IMDb rating', async () => {
+    const provider = makeProvider();
+    const result = await lookup(req('Dark'), { provider, fetchPoster });
+    expect(result).toMatchObject({
+      status: 'match',
+      movie: { kind: 'tv', tmdbId: 75656, title: 'Dark', seasons: 3, imdbId: 'tt975656' },
+    });
+    expect(provider.details).toHaveBeenCalledWith(75656, 'tv');
+    expect(provider.rating).toHaveBeenCalledWith('tt975656');
+  });
+
+  it('keeps a movie and a show with the same TMDB id apart', async () => {
+    const provider = makeProvider();
+    const film = await lookup(req('Die Unfassbaren'), { provider, fetchPoster });
+    const show = await lookup(req('Dark'), { provider, fetchPoster });
+    expect(film).toMatchObject({ movie: { kind: 'movie', tmdbId: 75656 } });
+    expect(show).toMatchObject({ movie: { kind: 'tv', tmdbId: 75656, title: 'Dark' } });
+    expect(provider.details).toHaveBeenCalledTimes(2);
+  });
+
+  it('only searches movies when TV shows are switched off', async () => {
+    await updateSettings({ tvShows: false });
+    const provider = makeProvider();
+    expect((await lookup(req('Dark'), { provider })).status).toBe('nomatch');
+    expect(searches(provider, 'tv')).toHaveLength(0);
+    expect(searches(provider, 'movie').length).toBeGreaterThan(0);
+  });
+
+  it('only searches TV shows when movies are switched off', async () => {
+    await updateSettings({ movies: false });
+    const provider = makeProvider();
+    expect((await lookup(req('Dune'), { provider })).status).toBe('nomatch');
+    expect(searches(provider, 'movie')).toHaveLength(0);
+    expect((await lookup(req('Dark'), { provider, fetchPoster })).status).toBe('match');
+  });
+
+  it('searches only TV shows for text that names a season, and skips it with TV off', async () => {
+    const provider = makeProvider();
+    const seasonal = req('Dune', {
+      candidates: [{ text: 'Dune', series: true, weight: 1, source: 'test' }],
+    });
+    expect((await lookup(seasonal, { provider })).status).toBe('nomatch');
+    expect(searches(provider, 'movie')).toHaveLength(0);
+
+    await updateSettings({ tvShows: false });
+    vi.mocked(provider.search).mockClear();
+    expect((await lookup(seasonal, { provider })).status).toBe('nomatch');
+    expect(provider.search).not.toHaveBeenCalled();
+  });
+
+  it('leaves TV shows out of automatic lookups on cinema pages', async () => {
+    const provider = makeProvider();
+    expect((await lookup(req('Dark', { cinema: true }), { provider })).status).toBe('nomatch');
+    expect(searches(provider, 'tv')).toHaveLength(0);
+    // Alt-hover still finds it.
+    const manual = await lookup(req('Dark', { cinema: true, mode: 'manual' }), {
+      provider,
+      fetchPoster,
+    });
+    expect(manual).toMatchObject({ status: 'match', movie: { kind: 'tv' } });
+  });
+
+  it('remembers a picked show as a show', async () => {
+    const provider = makeProvider();
+    await pickMovie('Dark Netflix', { kind: 'tv', tmdbId: 75656 }, [], { provider, fetchPoster });
+    const again = await lookup(req('Dark Netflix'), { provider, fetchPoster });
+    expect(again).toMatchObject({
+      status: 'match',
+      picked: true,
+      movie: { kind: 'tv', tmdbId: 75656, title: 'Dark' },
+    });
+  });
+
+  it("reads a show's IMDb id, seasons and run from TMDB", async () => {
+    await updateSettings({ tmdbKey: 'k', omdbKey: 'o', movies: false });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: URL | string) => {
+        const u = new URL(String(url));
+        if (u.pathname === '/3/search/tv') {
+          return Response.json({
+            results: [
+              {
+                id: 1399,
+                name: 'Game of Thrones',
+                original_name: 'Game of Thrones',
+                first_air_date: '2011-04-17',
+                vote_count: 25000,
+              },
+            ],
+          });
+        }
+        if (u.pathname === '/3/tv/1399') {
+          expect(u.searchParams.get('append_to_response')).toBe('external_ids');
+          return Response.json({
+            id: 1399,
+            name: 'Game of Thrones',
+            original_name: 'Game of Thrones',
+            first_air_date: '2011-04-17',
+            last_air_date: '2019-05-19',
+            status: 'Ended',
+            number_of_seasons: 8,
+            episode_run_time: [],
+            genres: [{ id: 18, name: 'Drama' }],
+            overview: 'Seven noble families.',
+            poster_path: null,
+            vote_average: 8.5,
+            vote_count: 25000,
+            external_ids: { imdb_id: 'tt0944947' },
+          });
+        }
+        if (u.hostname === 'www.omdbapi.com') {
+          expect(u.searchParams.get('i')).toBe('tt0944947');
+          return Response.json({ Response: 'True', imdbRating: '9.2', imdbVotes: '2,400,000' });
+        }
+        throw new Error(`unexpected ${u}`);
+      }),
+    );
+    const result = await lookup(req('Game of Thrones'));
+    expect(result).toMatchObject({
+      status: 'match',
+      movie: {
+        kind: 'tv',
+        title: 'Game of Thrones',
+        year: 2011,
+        lastYear: 2019,
+        ended: true,
+        seasons: 8,
+        runtime: null,
+        rating: 9.2,
+      },
+    });
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('lookup and TV series', () => {
   // The weekly list of popular series, by normalized name.
   const LIST: Record<string, number> = { wednesday: 69.5, friends: 139.6 };
   const listedSeries = async (name: string) => LIST[name];
+  const tvSearches = (provider: RatingsProvider) =>
+    vi.mocked(provider.search).mock.calls.filter(([, o]) => o.kind === 'tv');
 
-  it('stays quiet in auto mode for a film named like a popular series on the list', async () => {
-    const provider = makeProvider();
-    const result = await lookup(req('Wednesday'), { provider, listedSeries });
-    expect(result).toMatchObject({ status: 'nomatch', query: 'Wednesday' });
-    expect(provider.searchSeries).not.toHaveBeenCalled();
-    // Alt-hover still finds the film.
-    const manual = await lookup(req('Wednesday', { mode: 'manual' }), {
-      provider,
-      listedSeries,
-      fetchPoster,
+  describe('with TV shows switched off', () => {
+    beforeEach(async () => {
+      await updateSettings({ tvShows: false });
     });
-    expect(manual).toMatchObject({ status: 'match', movie: { tmdbId: 19703 } });
+
+    it('stays quiet in auto mode for a film named like a popular series on the list', async () => {
+      const provider = makeProvider();
+      const result = await lookup(req('Wednesday'), { provider, listedSeries });
+      expect(result).toMatchObject({ status: 'nomatch', query: 'Wednesday' });
+      expect(tvSearches(provider)).toHaveLength(0);
+      // Alt-hover still finds the film.
+      const manual = await lookup(req('Wednesday', { mode: 'manual' }), {
+        provider,
+        listedSeries,
+        fetchPoster,
+      });
+      expect(manual).toMatchObject({ status: 'match', movie: { tmdbId: 19703 } });
+    });
+
+    it("asks TMDB's TV search, once, for a name the list doesn't have", async () => {
+      const provider = makeProvider();
+      // The list has the show as "La casa de papel".
+      const result = await lookup(req('Haus des Geldes'), { provider, listedSeries });
+      expect(result).toMatchObject({ status: 'nomatch', query: 'Haus des Geldes' });
+      expect(provider.search).toHaveBeenCalledWith('Haus des Geldes', {
+        kind: 'tv',
+        language: 'de-DE',
+      });
+      await lookup(req('Haus des Geldes'), { provider, listedSeries });
+      expect(tvSearches(provider)).toHaveLength(1);
+    });
+
+    it('keeps a film few people rated when TMDB has no series of that name', async () => {
+      const provider = makeProvider();
+      const result = await lookup(req('Heldin'), { provider, listedSeries, fetchPoster });
+      expect(result).toMatchObject({ status: 'match', movie: { kind: 'movie', tmdbId: 1356670 } });
+      expect(tvSearches(provider)).toHaveLength(1);
+    });
+
+    it('checks for no series for well-known films, or in manual mode', async () => {
+      const provider = makeProvider();
+      const list = vi.fn(listedSeries);
+      await lookup(req('Dune'), { provider, listedSeries: list, fetchPoster });
+      const manual = await lookup(req('Haus des Geldes', { mode: 'manual' }), {
+        provider,
+        listedSeries: list,
+        fetchPoster,
+      });
+      expect(manual).toMatchObject({ status: 'match', movie: { tmdbId: 689249 } });
+      expect(list).not.toHaveBeenCalled();
+      expect(tvSearches(provider)).toHaveLength(0);
+    });
+
+    it('reads the stored weekly list by default', async () => {
+      const now = Date.now();
+      await saveSeriesList({ shows: { wednesday: 69.5 }, fetched: now, tried: now });
+      const provider = makeProvider();
+      expect((await lookup(req('Wednesday'), { provider })).status).toBe('nomatch');
+      expect(tvSearches(provider)).toHaveLength(0);
+    });
   });
 
-  it("asks TMDB's TV search, once, for a name the list doesn't have", async () => {
-    const provider = makeProvider();
-    // The list has the show as "La casa de papel".
-    const result = await lookup(req('Haus des Geldes'), { provider, listedSeries });
-    expect(result).toMatchObject({ status: 'nomatch', query: 'Haus des Geldes' });
-    expect(provider.searchSeries).toHaveBeenCalledWith('Haus des Geldes', { language: 'de-DE' });
-    await lookup(req('Haus des Geldes'), { provider, listedSeries });
-    expect(provider.searchSeries).toHaveBeenCalledTimes(1);
-  });
-
-  it('keeps a film few people rated when TMDB has no series of that name', async () => {
-    const provider = makeProvider();
-    const result = await lookup(req('Heldin'), { provider, listedSeries, fetchPoster });
-    expect(result).toMatchObject({ status: 'match', movie: { tmdbId: 1356670 } });
-    expect(provider.searchSeries).toHaveBeenCalledTimes(1);
-  });
-
-  it('checks for no series for well-known films, or in manual mode', async () => {
+  it('leaves series to the show search when TV shows are on', async () => {
     const provider = makeProvider();
     const list = vi.fn(listedSeries);
-    await lookup(req('Dune'), { provider, listedSeries: list, fetchPoster });
-    const manual = await lookup(req('Haus des Geldes', { mode: 'manual' }), {
+    const result = await lookup(req('Haus des Geldes'), {
       provider,
       listedSeries: list,
       fetchPoster,
     });
-    expect(manual).toMatchObject({ status: 'match', movie: { tmdbId: 689249 } });
+    expect(result).toMatchObject({ status: 'match', movie: { kind: 'tv', tmdbId: 71446 } });
     expect(list).not.toHaveBeenCalled();
-    expect(provider.searchSeries).not.toHaveBeenCalled();
   });
 
-  it('only uses the list when the provider has no TV search', async () => {
-    const provider: RatingsProvider = { ...makeProvider(), searchSeries: undefined };
-    const result = await lookup(req('Haus des Geldes'), { provider, listedSeries, fetchPoster });
-    expect(result).toMatchObject({ status: 'match', movie: { tmdbId: 689249 } });
-    expect((await lookup(req('Wednesday'), { provider, listedSeries })).status).toBe('nomatch');
-  });
-
-  it('reads the stored weekly list by default', async () => {
-    const now = Date.now();
-    await saveSeriesList({ shows: { wednesday: 69.5 }, fetched: now, tried: now });
+  it('still checks on cinema pages, which search films only', async () => {
     const provider = makeProvider();
-    expect((await lookup(req('Wednesday'), { provider })).status).toBe('nomatch');
-    expect(provider.searchSeries).not.toHaveBeenCalled();
+    const result = await lookup(req('Wednesday', { cinema: true }), { provider, listedSeries });
+    expect(result).toMatchObject({ status: 'nomatch', query: 'Wednesday' });
+    expect(tvSearches(provider)).toHaveLength(0);
   });
 });
 

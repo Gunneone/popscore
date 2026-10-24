@@ -1,8 +1,9 @@
 # Popscore
 
-A Chrome and Firefox extension that shows a movie's **IMDb rating in a hover card** while you browse
-cinema programmes (CineStar, Odeon, AMC, Hoyts, …) and streaming catalogs (Netflix, Prime Video,
-Disney+, …). No more opening IMDb in another tab to decide whether a film is worth it.
+A Chrome and Firefox extension that shows the **IMDb rating** of a movie or TV show **in a hover
+card** while you browse cinema programmes (CineStar, Odeon, AMC, Hoyts, …) and streaming catalogs
+(Netflix, Prime Video, Disney+, …). No more opening IMDb in another tab to decide whether something
+is worth it.
 
 - Rest the pointer on a poster or title for half a second on an enabled site, or hold **Alt (⌥)** to
   look up any title instantly.
@@ -10,19 +11,22 @@ Disney+, …). No more opening IMDb in another tab to decide whether a film is w
   markets (DE, AT, CH, UK, IE, US, CA, AU, NZ), listed in [src/sites.ts](src/sites.ts). In the
   settings they're grouped into Cinemas, Streaming services and Your sites; each list and each site
   can be switched off on its own.
-- Every movie in view gets a small score tag in the same green / amber / red, on its poster (or
-  after its title in text listings). Tags only look films up as they scroll into view, and stop
+- Every movie and show in view gets a small score tag in the same green / amber / red, on its
+  poster (or after its title in text listings). Tags only look titles up as they scroll into view, and stop
   asking OMDb at 800 lookups a day so the card keeps the rest; past that they show TMDB's score.
   They can be switched off in the settings.
 - The card shows poster, year, a green / amber / red IMDb score with vote count, genres, runtime and
-  a short plot.
+  a short plot. For a TV show it shows the years it ran ("2017–2020", "2019–") and its seasons.
 - New releases: OMDb's copy of IMDb ratings lags a few weeks behind, so until it has one the card
   shows TMDB's user score instead, clearly labelled "/10 TMDB".
 - **Wrong movie?** opens the other close matches and a search box; your pick is remembered.
-- The card links to the film on IMDb, or on Letterboxd if you pick that in the settings.
-- Movies only: a tile that names a popular TV series ("Wednesday", "Friends") gets no card or tag,
-  even when TMDB has a little-known film or special of that name; Alt-hover still looks it up.
-  German titles are understood.
+- The card links to the title on IMDb, or on Letterboxd if you pick that in the settings (Letterboxd
+  has no TV shows, so shows still link to IMDb).
+- Movies, TV shows or both: pick in the settings (both by default). Cinema pages only look up films
+  unless you hold Alt. Where only films are looked up (TV shows switched off, or a cinema page), a
+  tile that names a popular TV series ("Wednesday", "Friends") gets no card or tag, even when TMDB
+  has a little-known film or special of that name; Alt-hover still looks it up. German titles are
+  understood.
 
 ## How it finds titles without per-site code
 
@@ -34,23 +38,28 @@ generic signals:
    inside a tile (Netflix's "Go to …", Prime Video's overlay buttons)
 2. image `alt` text ("Filmplakat: …", "Banner zu …" are cleaned up)
 3. a single heading or `[class*=title]` element inside the tile
-4. schema.org `Movie` / `ScreeningEvent` JSON-LD and OpenGraph data on the page
+4. schema.org `Movie` / `TVSeries` / `ScreeningEvent` JSON-LD and OpenGraph data on the page
 
 Candidates are cleaned of cinema noise (OV, OmU, 3D, IMAX, FSK 12, "Vorpremiere:", "Tickets", …),
-then searched on TMDB in the page's language. A match is only shown when the title is similar
-enough, the year fits and the film isn't obscure, so hovering a "Play" button never pops up a
-card. See `src/detect/` and `src/match/`.
+then searched on TMDB in the page's language, as movies, TV shows or both. Season and episode
+labels ("Staffel 2", "Season 4, Episode 1", "3 Staffeln", "S01:E04") are cut off and mark the tile
+as a show, and so do links to `/serie/…`, `/serien/…` or `/series/…` pages: those are only searched
+as shows. A match is only shown when the title is similar enough, the year fits (for a show, any
+year from its first season on) and the title isn't obscure, so hovering a "Play" button never pops
+up a card. See `src/detect/` and `src/match/`.
 
-TV series are told apart from films of the same name with TMDB's daily export of all series
-(files.tmdb.org, ~5 MB gzipped, downloaded at most once a week): the ~16,000 shows with a TMDB
-popularity of at least 8 are kept by normalized name (~320 kB in extension storage). When the best
-film match is doubtful (only a subtitle matches, as with "Friends: The Reunion", or fewer than
-2,000 people rated it) and a series of exactly that name is at least 5× as popular, auto mode stays
-quiet. Names missing from the list, because TMDB has the show under its original name ("Haus des
-Geldes" is "La casa de papel"), are checked with TMDB's TV search. See `src/series.ts`.
+Where only films are looked up (TV shows switched off, or automatically on a cinema page), TV
+series are told apart from films of the same name with TMDB's daily export of all series
+(files.tmdb.org, ~5 MB gzipped, downloaded at most once a week while it's needed): the ~16,000
+shows with a TMDB popularity of at least 8 are kept by normalized name (~320 kB in extension
+storage). When the best film match is doubtful (only a subtitle matches, as with "Friends: The
+Reunion", or fewer than 2,000 people rated it) and a series of exactly that name is at least 5× as
+popular, auto mode stays quiet. Names missing from the list, because TMDB has the show under its
+original name ("Haus des Geldes" is "La casa de papel"), are checked with TMDB's TV search. See
+`src/series.ts`.
 
-Score tags use the same detector: every image outside menus and footers, plus links to a film's
-page in tiles without an image, is treated as if you pointed at it once it scrolls into view, and
+Score tags use the same detector: every image outside menus and footers, plus links to a film's or
+show's page in tiles without an image, is treated as if you pointed at it once it scrolls into view, and
 gets a tag when that finds a confident match. The tag goes into the page next to the poster (or at
 the end of the title), so it scrolls, slides and gets clipped along with it. See
 `src/detect/scan.ts` and `entrypoints/content/tags.ts`.

@@ -70,6 +70,7 @@ describe('titleSimilarity', () => {
 const movie = (
   m: Partial<MovieSummary> & Pick<MovieSummary, 'tmdbId' | 'title'>,
 ): MovieSummary => ({
+  kind: 'movie',
   originalTitle: m.title,
   popularity: 10,
   voteCount: 1000,
@@ -238,6 +239,30 @@ describe('rankResults', () => {
   it("doesn't reject on a soft year from structured data (sbs.com.au dates films by when it added them)", () => {
     const [top] = rankResults('Dune', 2026, [dune2021], { cinema: false, now, softYear: true });
     expect(top.confident).toBe(true);
+  });
+
+  const dark = movie({
+    kind: 'tv',
+    tmdbId: 70523,
+    title: 'Dark',
+    year: 2017,
+    releaseDate: '2017-12-01',
+    voteCount: 7000,
+  });
+
+  it("accepts a later season's year for a show, but not a year before it started", () => {
+    expect(rankResults('Dark', 2020, [dark], { cinema: false, now })[0].confident).toBe(true);
+    expect(rankResults('Dark', 2016, [dark], { cinema: false, now })[0].confident).toBe(true);
+    expect(rankResults('Dark', 2010, [dark], { cinema: false, now })[0].confident).toBe(false);
+    // A film's year still has to fit.
+    const film = { ...dark, kind: 'movie' as const };
+    expect(rankResults('Dark', 2020, [film], { cinema: false, now })[0].confident).toBe(false);
+  });
+
+  it('does not match TV shows on cinema pages', () => {
+    const [top] = rankResults('Dark', undefined, [dark], { cinema: true, now });
+    expect(top.confident).toBe(false);
+    expect(rankResults('Dark', undefined, [dark], { cinema: false, now })[0].confident).toBe(true);
   });
 });
 

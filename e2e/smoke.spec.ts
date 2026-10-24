@@ -7,6 +7,8 @@ import path from 'node:path';
 const EXTENSION = path.resolve('dist/chrome');
 const FIXTURE = readFileSync(path.resolve('e2e/fixtures/cinema.html'), 'utf8');
 const PAGE_URL = 'https://www.cinestar.de/popscore-e2e';
+// The same page on a streaming site, where TV shows are looked up too.
+const STREAMING_URL = 'https://www.joyn.de/popscore-e2e';
 const RANKED = readFileSync(path.resolve('e2e/fixtures/ranked.html'), 'utf8');
 const RANKED_URL = 'https://www.cinestar.de/popscore-ranked';
 
@@ -20,9 +22,11 @@ test.beforeEach(async () => {
     channel: 'chromium',
     args: [`--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`],
   });
-  await context.route(PAGE_URL, (route) =>
-    route.fulfill({ status: 200, contentType: 'text/html', body: FIXTURE }),
-  );
+  for (const url of [PAGE_URL, STREAMING_URL]) {
+    await context.route(url, (route) =>
+      route.fulfill({ status: 200, contentType: 'text/html', body: FIXTURE }),
+    );
+  }
   await failSeriesList();
 });
 
@@ -87,53 +91,88 @@ const FILMS = [
   { key: 'oppenheimer', id: 872585, title: 'Oppenheimer', date: '2023-07-19', votes: 9000, tmdb: 8.1, imdb: 'tt15398776', imdbRating: 8.3 },
 ];
 
-/** Stands in for TMDB and OMDb inside the extension's service worker, with the films above. */
+/** The fixture's TV show. */
+const SHOWS = [
+  // prettier-ignore
+  { key: 'stranger', id: 66732, title: 'Stranger Things', date: '2016-07-15', votes: 18000, tmdb: 8.6, imdb: 'tt4574334', imdbRating: 8.6 },
+];
+
+/** Stands in for TMDB and OMDb inside the extension's service worker, with the titles above. */
 async function mockMovieApis() {
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
-  await worker.evaluate((films) => {
-    const g = globalThis as unknown as { fetch: typeof fetch };
-    const real = g.fetch.bind(globalThis);
-    const json = (body: unknown) =>
-      new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
-    g.fetch = async (input, init) => {
-      const url = new URL(input instanceof Request ? input.url : String(input));
-      if (url.hostname === 'api.themoviedb.org') {
-        // No TV series of the films' names.
-        if (url.pathname === '/3/search/tv') return json({ results: [] });
-        if (url.pathname === '/3/search/movie') {
-          const q = (url.searchParams.get('query') ?? '').toLowerCase();
-          const hits = films.filter((f) => q.includes(f.key));
+  await worker.evaluate(
+    ([films, shows]) => {
+      const g = globalThis as unknown as { fetch: typeof fetch };
+      const real = g.fetch.bind(globalThis);
+      const json = (body: unknown) =>
+        new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
+      g.fetch = async (input, init) => {
+        const url = new URL(input instanceof Request ? input.url : String(input));
+        if (url.hostname === 'api.themoviedb.org') {
+          if (url.pathname === '/3/search/movie') {
+            const q = (url.searchParams.get('query') ?? '').toLowerCase();
+            const hits = films.filter((f) => q.includes(f.key));
+            return json({
+              results: hits.map((f) => ({
+                id: f.id,
+                title: f.title,
+                original_title: f.title,
+                release_date: f.date,
+                vote_count: f.votes,
+                popularity: 50,
+              })),
+            });
+          }
+          if (url.pathname === '/3/search/tv') {
+            const q = (url.searchParams.get('query') ?? '').toLowerCase();
+            const hits = shows.filter((f) => q.includes(f.key));
+            return json({
+              results: hits.map((f) => ({
+                id: f.id,
+                name: f.title,
+                original_name: f.title,
+                first_air_date: f.date,
+                vote_count: f.votes,
+                popularity: 50,
+              })),
+            });
+          }
+          const show = shows.find((m) => url.pathname === `/3/tv/${m.id}`);
+          if (show) {
+            return json({
+              id: show.id,
+              name: show.title,
+              original_name: show.title,
+              first_air_date: show.date,
+              number_of_seasons: 5,
+              status: 'Ended',
+              vote_average: show.tmdb,
+              vote_count: show.votes,
+              external_ids: { imdb_id: show.imdb },
+            });
+          }
+          const f = films.find((m) => url.pathname === `/3/movie/${m.id}`);
+          if (!f) return new Response('{}', { status: 404 });
           return json({
-            results: hits.map((f) => ({
-              id: f.id,
-              title: f.title,
-              original_title: f.title,
-              release_date: f.date,
-              vote_count: f.votes,
-              popularity: 50,
-            })),
+            id: f.id,
+            title: f.title,
+            original_title: f.title,
+            release_date: f.date,
+            imdb_id: f.imdb,
+            vote_average: f.tmdb,
+            vote_count: f.votes,
           });
         }
-        const f = films.find((m) => url.pathname === `/3/movie/${m.id}`);
-        if (!f) return new Response('{}', { status: 404 });
-        return json({
-          id: f.id,
-          title: f.title,
-          original_title: f.title,
-          release_date: f.date,
-          imdb_id: f.imdb,
-          vote_average: f.tmdb,
-          vote_count: f.votes,
-        });
-      }
-      if (url.hostname === 'www.omdbapi.com') {
-        const f = films.find((m) => m.imdb === url.searchParams.get('i'));
-        const rating = f?.imdbRating ? String(f.imdbRating) : 'N/A';
-        return json({ Response: 'True', imdbRating: rating, imdbVotes: '1,000' });
-      }
-      return real(input, init);
-    };
-  }, FILMS);
+        if (url.hostname === 'www.omdbapi.com') {
+          const f = [...films, ...shows].find((m) => m.imdb === url.searchParams.get('i'));
+          const rating = f?.imdbRating ? String(f.imdbRating) : 'N/A';
+          return json({ Response: 'True', imdbRating: rating, imdbVotes: '1,000' });
+        }
+        return real(input, init);
+      };
+    },
+    [FILMS, SHOWS] as const,
+  );
 }
 
 test('asks for API keys when none are set', async () => {
@@ -247,7 +286,8 @@ test('tags every film with its score, on the poster or after the title', async (
   expect(Math.abs(box.x + box.width - (poster.x + poster.width - 6))).toBeLessThan(2);
   expect(Math.abs(box.y - (poster.y + 6))).toBeLessThan(2);
 
-  // A text link gets it after its title; the TV show and other links get none.
+  // A text link gets it after its title. Other links get none, and neither does the TV show:
+  // cinemas don't show series.
   await expect(page.locator('#link-oppenheimer popscore-tag')).toHaveAttribute('data-score', '8.3');
   await expect(page.locator('#link-kontakt popscore-tag, li.show popscore-tag')).toHaveCount(0);
   // The tag's text stays in its shadow root: the hover detector reads the link as before.
@@ -259,6 +299,29 @@ test('tags every film with its score, on the poster or after the title', async (
   await expect(page.locator('popscore-card')).toHaveAttribute('data-state', 'match', {
     timeout: 5000,
   });
+});
+
+test('tags and opens TV shows on streaming sites, until they are switched off', async () => {
+  await setKeys('tmdb-mock', 'omdb-mock');
+  await mockMovieApis();
+
+  const page = await context.newPage();
+  await page.goto(STREAMING_URL);
+  const show = page.locator('popscore-tag[data-kind="tv"][data-tmdb="66732"]');
+  await expect(show).toHaveAttribute('data-score', '8.6', { timeout: 10_000 });
+  await expect(page.locator('popscore-tag[data-kind="movie"]')).toHaveCount(4);
+
+  await page.locator('#tile-show').hover();
+  await expect(page.locator('popscore-card')).toHaveAttribute('data-state', 'match', {
+    timeout: 5000,
+  });
+  await page.screenshot({ path: 'test-results/card-show.png' });
+  await page.mouse.move(0, 0);
+
+  // Movies only: the show's tag goes, the films keep theirs.
+  await setKeys('tmdb-mock', 'omdb-mock', { tvShows: false });
+  await expect(show).toHaveCount(0, { timeout: 5000 });
+  await expect(page.locator('popscore-tag[data-kind="movie"]')).toHaveCount(4, { timeout: 5000 });
 });
 
 test('keeps a tag above the layers a tile draws over its poster', async () => {

@@ -6,10 +6,12 @@ import { clearCache } from '@/src/cache';
 import { fetchPosterDataUrl, lookup, pickMovie } from '@/src/lookup';
 import { normalizeTitle } from '@/src/match/normalize';
 import type { Message, Responses } from '@/src/messages';
+import type { LookupRequest } from '@/src/types';
 import { syncContentScripts } from '@/src/registration';
 import { keepSeriesListFresh } from '@/src/series';
 import {
   completePendingSite,
+  getSettings,
   getUsage,
   savePick,
   TAG_OMDB_BUDGET,
@@ -17,19 +19,27 @@ import {
 } from '@/src/settings';
 import { displayScore } from '@/src/ui/format';
 
+/**
+ * The weekly series list is only read by auto lookups that search films without TV shows: with
+ * TV shows switched off, or on cinema pages (see lookup).
+ */
+async function keepSeriesListFreshFor(req: LookupRequest): Promise<void> {
+  if (req.mode === 'auto' && (req.cinema || !(await getSettings()).tvShows)) keepSeriesListFresh();
+}
+
 async function handle(msg: Message): Promise<Responses[Message['type']]> {
   switch (msg.type) {
     case 'lookup':
-      // Auto mode skips TV series it finds in the weekly list.
-      if (msg.req.mode === 'auto') keepSeriesListFresh();
+      await keepSeriesListFreshFor(msg.req);
       return lookup(msg.req);
     case 'tag': {
-      keepSeriesListFresh();
+      await keepSeriesListFreshFor(msg.req);
       const result = await lookup(msg.req, { skipPoster: true, omdbBudget: TAG_OMDB_BUDGET });
       if (result.status === 'error') throw new Error(result.error);
       if (result.status !== 'match') return null;
+      const { kind, tmdbId } = result.movie;
       const score = displayScore(result.movie);
-      return score && { tmdbId: result.movie.tmdbId, value: score.value, source: score.source };
+      return score && { kind, tmdbId, value: score.value, source: score.source };
     }
     case 'search': {
       const result = await lookup({
@@ -39,11 +49,11 @@ async function handle(msg: Message): Promise<Responses[Message['type']]> {
         mode: 'manual',
       });
       if (result.status !== 'match') return result;
-      await savePick(normalizeTitle(msg.original), result.movie.tmdbId);
+      await savePick(normalizeTitle(msg.original), result.movie);
       return { ...result, query: msg.original, picked: true };
     }
     case 'pick':
-      return pickMovie(msg.query, msg.tmdbId, msg.alternatives);
+      return pickMovie(msg.query, { kind: msg.kind, tmdbId: msg.tmdbId }, msg.alternatives);
     case 'posters': {
       const entries = await Promise.all(
         msg.paths.map(async (p) => [p, await fetchPosterDataUrl(p, 'w92')] as const),

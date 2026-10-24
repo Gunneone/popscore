@@ -6,24 +6,25 @@ Popscore – IMDb ratings on hover
 
 ## Short description (≤ 132 chars, Chrome)
 
-Point at a movie on cinema or streaming sites and see its IMDb rating instantly. Works on Netflix, Prime Video, Disney+ and cinemas.
+Point at a movie or TV show on cinema and streaming sites to see its IMDb rating. Works on Netflix, Prime Video, Disney+ & cinemas.
 
 ## Full description
 
 Is it worth it, or is it trash? Stop opening IMDb in another tab.
 
-Popscore puts a small IMDb score tag on every movie poster on cinema and streaming websites, and
-shows a card with the details when you rest your pointer on a title or poster:
+Popscore puts a small IMDb score tag on every movie and TV show poster on cinema and streaming
+websites, and shows a card with the details when you rest your pointer on a title or poster:
 
 • Score tags on the posters, in a traffic-light color, so you can scan a whole programme at once
 • IMDb score with a traffic-light color (green / amber / red, adjustable) and vote count
 • Brand-new releases without an IMDb rating yet show TMDB's user score, clearly labelled
-• Poster, year, genres, runtime and a short plot
+• Poster, year, genres, runtime and a short plot; for TV shows, the years they ran and their seasons
+• Movies, TV shows or both: your choice in the settings
 • Works out of the box on 128 cinema and streaming sites in Germany, Austria, Switzerland, the UK, Ireland, the US, Canada, Australia and New Zealand: Netflix, Prime Video, Disney+, CineStar, Odeon, AMC, Hoyts and many more
 • Switch it on for any other site from the toolbar button, or hold Alt (⌥) to look up any title anywhere
 • Understands German titles ("Die Unfassbaren" → Now You See Me)
-• "Wrong movie?" lets you pick the right film; your choice is remembered
-• One click to the film on IMDb or Letterboxd (your choice)
+• "Wrong movie?" lets you pick the right title; your choice is remembered
+• One click to the title on IMDb, or to films on Letterboxd (your choice)
 • No account, no tracking. Uses your own free TMDB and OMDb API keys (setup takes ~3 minutes)
 
 Movie data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.
@@ -35,18 +36,19 @@ Chrome: Entertainment · Firefox: Search Tools / Photos, Music & Videos
 
 ## Chrome Web Store: single purpose
 
-Show the IMDb rating of the movies on a web page, as tags on their posters and in a card when the
-user points at a title.
+Show the IMDb rating of the movies and TV shows on a web page, as tags on their posters and in a
+card when the user points at a title.
 
 ## Chrome Web Store: permission justifications
 
 - **Host permissions for the listed cinema/streaming sites (content script)**: read the title of
-  the element under the pointer, and of the movies in view for the score tags, and display the
-  rating card and tags on those pages.
-- **api.themoviedb.org, image.tmdb.org, www.omdbapi.com**: look up the movie, its poster and its
-  IMDb rating.
+  the element under the pointer, and of the movies and shows in view for the score tags, and
+  display the rating card and tags on those pages.
+- **api.themoviedb.org, image.tmdb.org, www.omdbapi.com**: look up the movie or show, its poster
+  and its IMDb rating.
 - **files.tmdb.org**: download TMDB's public list of TV series once a week, so series tiles get no
-  movie rating. It's the same file for everyone; nothing is sent with the request.
+  movie rating when only films are looked up. It's the same file for everyone; nothing is sent with
+  the request.
 - **Optional host permissions (`<all_urls>`)**: requested only when the user turns on "Alt-hover
   on every site" or enables an additional site from the toolbar.
 - **storage**: settings, API keys, cache of looked-up ratings.
@@ -57,8 +59,8 @@ user points at a title.
 
 ## Chrome Web Store: data usage disclosure
 
-- Collected: **Website content** (the title text under the pointer, or of movies in view for the
-  score tags, sent to TMDB for the lookup).
+- Collected: **Website content** (the title text under the pointer, or of movies and shows in view
+  for the score tags, sent to TMDB for the lookup).
 - Not sold, not used for anything except the single purpose, not used for creditworthiness.
 
 ## Firefox (AMO)

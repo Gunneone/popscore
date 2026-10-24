@@ -38,9 +38,10 @@ function inImageTile(link: Element): boolean {
 }
 
 /**
- * Elements that may stand for one movie, without any site-specific selectors: every image outside
- * menus and footers (posters and tiles; the caller skips ones too small once they're laid out),
- * and links to a film's page whose tile has no image (text listings, CSS background posters).
+ * Elements that may stand for one movie or show, without any site-specific selectors: every image
+ * outside menus and footers (posters and tiles; the caller skips ones too small once they're laid
+ * out), and links to a film's or show's page whose tile has no image (text listings, CSS
+ * background posters).
  *
  * Every element looked at goes into `checked` and is skipped next time, so rescanning a page that
  * keeps changing only looks at what's new.

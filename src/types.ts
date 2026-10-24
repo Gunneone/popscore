@@ -1,3 +1,11 @@
+/** TMDB keeps movies and TV shows apart, with ids that overlap. */
+export type MediaKind = 'movie' | 'tv';
+
+/** Identifies a title across both kinds: "movie:438631", "tv:1399". */
+export function titleKey(m: { kind: MediaKind; tmdbId: number }): string {
+  return `${m.kind}:${m.tmdbId}`;
+}
+
 export interface Candidate {
   /** Cleaned title text, ready to search. */
   text: string;
@@ -7,6 +15,8 @@ export interface Candidate {
    * added the film rather than its release: a ranking hint only, never a reason to reject.
    */
   softYear?: boolean;
+  /** The text named a season or episode, or the link or page marks a series: TV shows only. */
+  series?: boolean;
   /** Higher is more trustworthy (0..~1.5). */
   weight: number;
   source: string;
@@ -22,7 +32,9 @@ export interface LookupRequest {
   mode: 'auto' | 'manual';
 }
 
+/** A movie or TV show from a TMDB search. */
 export interface MovieSummary {
+  kind: MediaKind;
   tmdbId: number;
   title: string;
   originalTitle: string;
@@ -35,18 +47,14 @@ export interface MovieSummary {
   tvMovie?: boolean;
 }
 
-/** A TV series from TMDB's TV search: only used to tell a series from a film of the same name. */
-export interface SeriesSummary {
-  name: string;
-  originalName: string;
-  popularity: number;
-}
-
 export interface MovieDetails {
+  kind: MediaKind;
   tmdbId: number;
   title: string;
   originalTitle: string;
+  /** For a show, the year it started. */
   year?: number;
+  /** Minutes; for a show, of an episode. */
   runtime: number | null;
   genres: string[];
   overview: string;
@@ -55,6 +63,12 @@ export interface MovieDetails {
   /** TMDB's own user score (0..10), shown when OMDb has no IMDb rating yet. */
   tmdbRating: number | null;
   tmdbVotes: number;
+  /** TV shows only. */
+  seasons?: number;
+  /** TV shows only: the year of the latest episode. */
+  lastYear?: number;
+  /** TV shows only: ended or cancelled, so no more seasons are coming. */
+  ended?: boolean;
 }
 
 export interface ImdbRating {
@@ -69,6 +83,7 @@ export interface MovieCard extends MovieDetails, ImdbRating {
 
 /** What a score tag shows: the card's score, without the rest of the card. */
 export interface TagScore {
+  kind: MediaKind;
   tmdbId: number;
   value: number;
   source: 'IMDb' | 'TMDB';
