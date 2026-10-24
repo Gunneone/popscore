@@ -6,9 +6,12 @@ import { clearCache } from '@/src/cache';
 import { fetchPosterDataUrl, lookup, pickMovie } from '@/src/lookup';
 import { normalizeTitle } from '@/src/match/normalize';
 import type { Message, Responses } from '@/src/messages';
+import type { LookupRequest } from '@/src/types';
 import { syncContentScripts } from '@/src/registration';
+import { keepSeriesListFresh } from '@/src/series';
 import {
   completePendingSite,
+  getSettings,
   getUsage,
   savePick,
   TAG_OMDB_BUDGET,
@@ -16,11 +19,21 @@ import {
 } from '@/src/settings';
 import { displayScore } from '@/src/ui/format';
 
+/**
+ * The weekly series list is only read by auto lookups that search films without TV shows: with
+ * TV shows switched off, or on cinema pages (see lookup).
+ */
+async function keepSeriesListFreshFor(req: LookupRequest): Promise<void> {
+  if (req.mode === 'auto' && (req.cinema || !(await getSettings()).tvShows)) keepSeriesListFresh();
+}
+
 async function handle(msg: Message): Promise<Responses[Message['type']]> {
   switch (msg.type) {
     case 'lookup':
+      await keepSeriesListFreshFor(msg.req);
       return lookup(msg.req);
     case 'tag': {
+      await keepSeriesListFreshFor(msg.req);
       const result = await lookup(msg.req, { skipPoster: true, omdbBudget: TAG_OMDB_BUDGET });
       if (result.status === 'error') throw new Error(result.error);
       if (result.status !== 'match') return null;

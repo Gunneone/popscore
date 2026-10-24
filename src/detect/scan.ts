@@ -6,7 +6,7 @@ const HEADINGS = 'h1,h2,h3,h4,h5,h6';
 const PAGE_LEVEL = new Set(['HTML', 'BODY', 'MAIN']);
 
 export type TagPlacement =
-  /** In the poster's top-left corner. */
+  /** In the poster's top-right corner. */
   | { kind: 'poster'; img: Element }
   /** Right after the title text, inside `el`. */
   | { kind: 'title'; el: Element };

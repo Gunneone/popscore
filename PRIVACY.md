@@ -1,8 +1,8 @@
-# Privacy policy: Worth It?
+# Privacy policy: Popscore
 
 _Last updated: 24 October 2026_
 
-Worth It? shows IMDb ratings for movies and TV shows you point at while browsing, and as small
+Popscore shows IMDb ratings for movies and TV shows you point at while browsing, and as small
 score tags on the ones you see on the sites where it's switched on. It has no servers of its own, no accounts
 and no analytics.
 
@@ -14,10 +14,18 @@ site where auto-hover is on:
 
 - **The title text** of that movie or show (the element under your pointer, or the poster or link
   the tag goes on) is sent to **TMDB** (api.themoviedb.org) to find it, together with your TMDB API
-  key and the page's language.
+  key and the page's language. When only films are looked up and the best match is doubtful (only
+  part of the title matches, or few people rated the film), the same text also goes to TMDB's TV
+  search, to check whether the page shows a TV series of that name instead.
 - **Its IMDb id** (e.g. `tt1160419`) is sent to **OMDb** (www.omdbapi.com) with your OMDb
   API key to get its IMDb rating.
 - **Poster images** are loaded from TMDB's image server (image.tmdb.org).
+
+While it looks up films only (TV shows switched off, or on cinema pages), the extension also
+downloads **TMDB's public list of TV series** once a week (files.tmdb.org, about 5 MB) and keeps the
+names of the roughly 16,000 most popular shows, so it can skip series tiles without asking TMDB
+about each one. That request carries no page text, no API key and no settings: it's the same file
+for everyone.
 
 Nothing else is sent: not the page address, not your browsing history, not other page content.
 These services' own privacy policies apply to the requests they receive.
@@ -29,6 +37,7 @@ In your browser's extension storage only:
 - your settings and API keys (synced across your devices if browser sync is on),
 - movies and shows you corrected with "Wrong movie?" (synced),
 - a cache of looked-up movies, shows and ratings (kept on this device, expires after 3–30 days),
+- the names of popular TV series with their TMDB popularity (kept on this device, replaced weekly),
 - a count of today's OMDb lookups.
 
 Removing the extension deletes all of it. The settings page has a button to clear the cache.

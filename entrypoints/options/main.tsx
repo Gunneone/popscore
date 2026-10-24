@@ -53,7 +53,7 @@ function ApiKeys({ settings }: { settings: Settings }) {
         <span class="step">1</span> API keys
       </h2>
       <p class="muted">
-        Worth It? looks movies up on TMDB and reads the IMDb rating from OMDb. Both are free; you
+        Popscore looks movies up on TMDB and reads the IMDb rating from OMDb. Both are free; you
         need one key from each. They're stored in your browser profile and only sent to those two
         services.
       </p>
@@ -319,7 +319,7 @@ function Options() {
   return (
     <main class="options">
       <header>
-        <h1>Worth It?</h1>
+        <h1>Popscore</h1>
         <p class="muted">IMDb ratings for any movie or show you point at.</p>
       </header>
       {welcome && (

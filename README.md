@@ -1,4 +1,4 @@
-# Worth It?
+# Popscore
 
 A Chrome and Firefox extension that shows the **IMDb rating** of a movie or TV show **in a hover
 card** while you browse cinema programmes (CineStar, Odeon, AMC, Hoyts, …) and streaming catalogs
@@ -23,7 +23,10 @@ is worth it.
 - The card links to the title on IMDb, or on Letterboxd if you pick that in the settings (Letterboxd
   has no TV shows, so shows still link to IMDb).
 - Movies, TV shows or both: pick in the settings (both by default). Cinema pages only look up films
-  unless you hold Alt. German titles are understood.
+  unless you hold Alt. Where only films are looked up (TV shows switched off, or a cinema page), a
+  tile that names a popular TV series ("Wednesday", "Friends") gets no card or tag, even when TMDB
+  has a little-known film or special of that name; Alt-hover still looks it up. German titles are
+  understood.
 
 ## How it finds titles without per-site code
 
@@ -45,6 +48,16 @@ as shows. A match is only shown when the title is similar enough, the year fits 
 year from its first season on) and the title isn't obscure, so hovering a "Play" button never pops
 up a card. See `src/detect/` and `src/match/`.
 
+Where only films are looked up (TV shows switched off, or automatically on a cinema page), TV
+series are told apart from films of the same name with TMDB's daily export of all series
+(files.tmdb.org, ~5 MB gzipped, downloaded at most once a week while it's needed): the ~16,000
+shows with a TMDB popularity of at least 8 are kept by normalized name (~320 kB in extension
+storage). When the best film match is doubtful (only a subtitle matches, as with "Friends: The
+Reunion", or fewer than 2,000 people rated it) and a series of exactly that name is at least 5× as
+popular, auto mode stays quiet. Names missing from the list, because TMDB has the show under its
+original name ("Haus des Geldes" is "La casa de papel"), are checked with TMDB's TV search. See
+`src/series.ts`.
+
 Score tags use the same detector: every image outside menus and footers, plus links to a film's or
 show's page in tiles without an image, is treated as if you pointed at it once it scrolls into view, and
 gets a tag when that finds a confident match. The tag goes into the page next to the poster (or at
@@ -52,7 +65,7 @@ the end of the title), so it scrolls, slides and gets clipped along with it. See
 `src/detect/scan.ts` and `entrypoints/content/tags.ts`.
 
 To see what it would detect on any site, without API keys, run `npm run probe`, paste
-`dist/probe/probe.js` into the DevTools console and call `worthItProbe.watch()`.
+`dist/probe/probe.js` into the DevTools console and call `popscoreProbe.watch()`.
 
 ## Setup for users
 
@@ -98,14 +111,15 @@ Load it by hand: `npm run build`, then in Chrome open `chrome://extensions`, ena
 | `src/match/`                                 | Title normalization and result scoring                          |
 | `src/api/`                                   | TMDB and OMDb clients behind a `RatingsProvider` interface      |
 | `src/lookup.ts`, `src/cache.ts`              | Search → details → rating with caching and "Wrong movie?" picks |
+| `src/series.ts`                              | Weekly list of popular TV series, so auto mode skips them       |
 | `src/ui/`                                    | Card and score tag, shadow-DOM host, positioning                |
 
 ## Publishing
 
 See `store/listing.md` for listing text, permission justifications and the data disclosure, and
 `PRIVACY.md` for the privacy policy (host it publicly, e.g. via GitHub Pages, and link it in both
-stores). Run `npm run zip`, then upload `dist/worth-it-chrome-<version>.zip` to the Chrome Web Store and
-`dist/worth-it-firefox-<version>.zip` plus `dist/worth-it-source-<version>.zip` to addons.mozilla.org.
+stores). Run `npm run zip`, then upload `dist/popscore-chrome-<version>.zip` to the Chrome Web Store and
+`dist/popscore-firefox-<version>.zip` plus `dist/popscore-source-<version>.zip` to addons.mozilla.org.
 
 Movie data from [TMDB](https://www.themoviedb.org/) (this product uses the TMDB API but is not
 endorsed or certified by TMDB) and the [OMDb API](https://www.omdbapi.com/) (CC BY-NC 4.0, so the

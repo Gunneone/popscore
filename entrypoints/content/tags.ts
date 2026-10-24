@@ -33,7 +33,7 @@ const RETRY_MS = 30_000;
 
 function isOurs(node: Node): boolean {
   return (
-    node instanceof Element && (node.tagName === 'WORTH-IT-TAG' || node.tagName === 'WORTH-IT-CARD')
+    node instanceof Element && (node.tagName === 'POPSCORE-TAG' || node.tagName === 'POPSCORE-CARD')
   );
 }
 

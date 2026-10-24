@@ -2,7 +2,7 @@
 
 ## Name
 
-Worth It? – IMDb ratings on hover
+Popscore – IMDb ratings on hover
 
 ## Short description (≤ 132 chars, Chrome)
 
@@ -12,7 +12,7 @@ Point at a movie or TV show on cinema and streaming sites to see its IMDb rating
 
 Is it worth it, or is it trash? Stop opening IMDb in another tab.
 
-Worth It? puts a small IMDb score tag on every movie and TV show poster on cinema and streaming
+Popscore puts a small IMDb score tag on every movie and TV show poster on cinema and streaming
 websites, and shows a card with the details when you rest your pointer on a title or poster:
 
 • Score tags on the posters, in a traffic-light color, so you can scan a whole programme at once
@@ -46,6 +46,9 @@ card when the user points at a title.
   display the rating card and tags on those pages.
 - **api.themoviedb.org, image.tmdb.org, www.omdbapi.com**: look up the movie or show, its poster
   and its IMDb rating.
+- **files.tmdb.org**: download TMDB's public list of TV series once a week, so series tiles get no
+  movie rating when only films are looked up. It's the same file for everyone; nothing is sent with
+  the request.
 - **Optional host permissions (`<all_urls>`)**: requested only when the user turns on "Alt-hover
   on every site" or enables an additional site from the toolbar.
 - **storage**: settings, API keys, cache of looked-up ratings.
@@ -63,7 +66,7 @@ card when the user points at a title.
 ## Firefox (AMO)
 
 - `data_collection_permissions.required: ["websiteContent"]` is declared in the manifest.
-- Upload the `dist/worth-it-source-<version>.zip` from `npm run zip` with build instructions: `npm ci && npm run zip:firefox`
+- Upload the `dist/popscore-source-<version>.zip` from `npm run zip` with build instructions: `npm ci && npm run zip:firefox`
   (Node 22+).
 - Linter warnings about `innerHTML` come from Preact's renderer (`dangerouslySetInnerHTML` support),
   which the extension never uses.

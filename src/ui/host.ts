@@ -23,7 +23,7 @@ export class CardHost {
   visible = false;
 
   constructor() {
-    this.host = document.createElement('worth-it-card');
+    this.host = document.createElement('popscore-card');
     const shadow = this.host.attachShadow({ mode: 'closed' });
     applyStyles(shadow, cardCss);
     this.mount = document.createElement('div');

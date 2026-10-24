@@ -4,6 +4,7 @@ import { ApiError } from '../src/api/errors';
 import type { RatingsProvider } from '../src/api/provider';
 import { clearCache } from '../src/cache';
 import { lookup, pickMovie, tmdbLanguage } from '../src/lookup';
+import { saveSeriesList } from '../src/series';
 import { getUsage, updateSettings } from '../src/settings';
 import type { LookupRequest, MediaKind, MovieDetails, MovieSummary } from '../src/types';
 
@@ -35,11 +36,52 @@ const SEARCH: Record<string, MovieSummary[]> = {
     summary(841, 'Dune', 1984, { voteCount: 2700 }),
   ],
   Play: [summary(9, 'Play', 2011, { voteCount: 2 })],
+  // TMDB's de-DE results (October 2026) for series tiles and a film few people rated.
+  Wednesday: [
+    summary(19703, 'A Wednesday!', 2008, { voteCount: 380, popularity: 1.6 }),
+    summary(18387, 'Tag der Entscheidung', 1978, {
+      originalTitle: 'Big Wednesday',
+      voteCount: 198,
+      popularity: 2.7,
+    }),
+  ],
+  'Haus des Geldes': [
+    summary(689249, 'Haus des Geldes: Das Phänomen', 2020, {
+      originalTitle: 'La Casa de Papel: el fenómeno',
+      voteCount: 1092,
+      popularity: 3.8,
+    }),
+  ],
+  Heldin: [summary(1356670, 'Heldin', 2025, { voteCount: 361, popularity: 6.2 })],
 };
 
-// TMDB numbers movies and shows separately: Dark has the same id as Die Unfassbaren.
+const show = (tmdbId: number, title: string, year: number, extra: Partial<MovieSummary> = {}) =>
+  summary(tmdbId, title, year, { kind: 'tv', releaseDate: `${year}-12-01`, ...extra });
+
 const SEARCH_TV: Record<string, MovieSummary[]> = {
-  Dark: [summary(75656, 'Dark', 2017, { kind: 'tv', releaseDate: '2017-12-01' })],
+  // TMDB numbers movies and shows separately: Dark has the same id as Die Unfassbaren.
+  Dark: [show(75656, 'Dark', 2017)],
+  // TMDB's de-DE results (October 2026).
+  'Haus des Geldes': [
+    show(71446, 'Haus des Geldes', 2017, {
+      originalTitle: 'La casa de papel',
+      popularity: 36,
+      voteCount: 19756,
+    }),
+    show(112836, 'Haus des Geldes: Korea', 2022, {
+      originalTitle: '종이의 집: 공동경제구역',
+      popularity: 14.7,
+      voteCount: 734,
+    }),
+  ],
+  Heldin: [
+    show(100468, 'Unerschrocken! – Echte Heldinnen', 2018, {
+      originalTitle: 'Culottées',
+      popularity: 4.2,
+      voteCount: 1,
+    }),
+    show(232530, 'Heldinnen der Lüfte', 2024, { popularity: 0.5, voteCount: 1 }),
+  ],
 };
 
 const details = (id: number, kind: MediaKind = 'movie'): MovieDetails => {
@@ -93,6 +135,7 @@ const searches = (provider: RatingsProvider, kind: MediaKind) =>
 beforeEach(async () => {
   fakeBrowser.reset();
   await clearCache();
+  await saveSeriesList({ shows: {}, fetched: 0, tried: 0 });
 });
 
 describe('lookup', () => {
@@ -470,6 +513,95 @@ describe('lookup', () => {
       },
     });
     vi.unstubAllGlobals();
+  });
+});
+
+describe('lookup and TV series', () => {
+  // The weekly list of popular series, by normalized name.
+  const LIST: Record<string, number> = { wednesday: 69.5, friends: 139.6 };
+  const listedSeries = async (name: string) => LIST[name];
+  const tvSearches = (provider: RatingsProvider) =>
+    vi.mocked(provider.search).mock.calls.filter(([, o]) => o.kind === 'tv');
+
+  describe('with TV shows switched off', () => {
+    beforeEach(async () => {
+      await updateSettings({ tvShows: false });
+    });
+
+    it('stays quiet in auto mode for a film named like a popular series on the list', async () => {
+      const provider = makeProvider();
+      const result = await lookup(req('Wednesday'), { provider, listedSeries });
+      expect(result).toMatchObject({ status: 'nomatch', query: 'Wednesday' });
+      expect(tvSearches(provider)).toHaveLength(0);
+      // Alt-hover still finds the film.
+      const manual = await lookup(req('Wednesday', { mode: 'manual' }), {
+        provider,
+        listedSeries,
+        fetchPoster,
+      });
+      expect(manual).toMatchObject({ status: 'match', movie: { tmdbId: 19703 } });
+    });
+
+    it("asks TMDB's TV search, once, for a name the list doesn't have", async () => {
+      const provider = makeProvider();
+      // The list has the show as "La casa de papel".
+      const result = await lookup(req('Haus des Geldes'), { provider, listedSeries });
+      expect(result).toMatchObject({ status: 'nomatch', query: 'Haus des Geldes' });
+      expect(provider.search).toHaveBeenCalledWith('Haus des Geldes', {
+        kind: 'tv',
+        language: 'de-DE',
+      });
+      await lookup(req('Haus des Geldes'), { provider, listedSeries });
+      expect(tvSearches(provider)).toHaveLength(1);
+    });
+
+    it('keeps a film few people rated when TMDB has no series of that name', async () => {
+      const provider = makeProvider();
+      const result = await lookup(req('Heldin'), { provider, listedSeries, fetchPoster });
+      expect(result).toMatchObject({ status: 'match', movie: { kind: 'movie', tmdbId: 1356670 } });
+      expect(tvSearches(provider)).toHaveLength(1);
+    });
+
+    it('checks for no series for well-known films, or in manual mode', async () => {
+      const provider = makeProvider();
+      const list = vi.fn(listedSeries);
+      await lookup(req('Dune'), { provider, listedSeries: list, fetchPoster });
+      const manual = await lookup(req('Haus des Geldes', { mode: 'manual' }), {
+        provider,
+        listedSeries: list,
+        fetchPoster,
+      });
+      expect(manual).toMatchObject({ status: 'match', movie: { tmdbId: 689249 } });
+      expect(list).not.toHaveBeenCalled();
+      expect(tvSearches(provider)).toHaveLength(0);
+    });
+
+    it('reads the stored weekly list by default', async () => {
+      const now = Date.now();
+      await saveSeriesList({ shows: { wednesday: 69.5 }, fetched: now, tried: now });
+      const provider = makeProvider();
+      expect((await lookup(req('Wednesday'), { provider })).status).toBe('nomatch');
+      expect(tvSearches(provider)).toHaveLength(0);
+    });
+  });
+
+  it('leaves series to the show search when TV shows are on', async () => {
+    const provider = makeProvider();
+    const list = vi.fn(listedSeries);
+    const result = await lookup(req('Haus des Geldes'), {
+      provider,
+      listedSeries: list,
+      fetchPoster,
+    });
+    expect(result).toMatchObject({ status: 'match', movie: { kind: 'tv', tmdbId: 71446 } });
+    expect(list).not.toHaveBeenCalled();
+  });
+
+  it('still checks on cinema pages, which search films only', async () => {
+    const provider = makeProvider();
+    const result = await lookup(req('Wednesday', { cinema: true }), { provider, listedSeries });
+    expect(result).toMatchObject({ status: 'nomatch', query: 'Wednesday' });
+    expect(tvSearches(provider)).toHaveLength(0);
   });
 });
 

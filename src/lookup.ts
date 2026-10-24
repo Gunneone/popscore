@@ -3,7 +3,8 @@ import { directProvider, type RatingsProvider } from './api/provider';
 import { TMDB_IMAGE } from './api/tmdb';
 import { cacheGet, cacheSet, DAY } from './cache';
 import { normalizeTitle } from './match/normalize';
-import { rankResults, type Scored } from './match/score';
+import { rankResults, type ScoreContext, type Scored } from './match/score';
+import { listedSeries } from './series';
 import {
   countOmdbCall,
   getPick,
@@ -38,6 +39,8 @@ export interface LookupDeps {
   skipPoster?: boolean;
   /** Don't ask OMDb for ratings that aren't cached once this many calls were made today. */
   omdbBudget?: number;
+  /** The weekly list of popular TV series (see src/series.ts). */
+  listedSeries?: (name: string) => Promise<number | undefined>;
 }
 
 /** "de" -> "de-DE"; TMDB uses the language to decide which title translation it returns. */
@@ -80,6 +83,25 @@ async function cachedSearch(
   }
   await cacheSet(key, results, results.length ? 30 * DAY : 7 * DAY);
   return results;
+}
+
+/**
+ * The most popular TV series named exactly like `query`: from the weekly list, else from TMDB's
+ * TV search, which also knows shows by their translated names ("Haus des Geldes").
+ */
+async function seriesNamed(
+  provider: RatingsProvider,
+  query: string,
+  language: string,
+  deps: LookupDeps,
+): Promise<ScoreContext['series']> {
+  const name = normalizeTitle(query);
+  const listed = await (deps.listedSeries ?? listedSeries)(name);
+  if (listed !== undefined) return { popularity: listed };
+  const named = (await cachedSearch(provider, 'tv', query, undefined, language)).filter(
+    (s) => normalizeTitle(s.title) === name || normalizeTitle(s.originalTitle) === name,
+  );
+  return named.length ? { popularity: Math.max(...named.map((s) => s.popularity)) } : undefined;
 }
 
 async function cachedDetails(
@@ -241,11 +263,20 @@ export async function lookup(req: LookupRequest, deps: LookupDeps = {}): Promise
         cand.softYear ? undefined : cand.year,
         language,
       );
-      const scored = rankResults(cand.text, cand.year, results, {
-        cinema: req.cinema,
-        now,
-        softYear: cand.softYear,
-      });
+      const ctx: ScoreContext = { cinema: req.cinema, now, softYear: cand.softYear };
+      let scored = rankResults(cand.text, cand.year, results, ctx);
+      // Searched for films only (TV shows switched off, or a cinema page), auto mode stays quiet
+      // when a doubtful film match shares its name with a far more popular series: the page
+      // most likely shows the series. Alt-hover and typed searches still answer with the film.
+      if (
+        req.mode === 'auto' &&
+        !kinds.includes('tv') &&
+        scored[0]?.confident &&
+        scored[0].doubtful
+      ) {
+        const series = await seriesNamed(provider, cand.text, language, deps);
+        if (series) scored = rankResults(cand.text, cand.year, results, { ...ctx, series });
+      }
       if (scored.length && (!best || scored[0].score > best.scored[0].score)) {
         best = { query: cand.text, scored };
       }

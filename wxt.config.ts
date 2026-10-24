@@ -16,7 +16,7 @@ export default defineConfig({
   },
   vite: () => ({ plugins: [preact()] }),
   manifest: {
-    name: 'Worth It?',
+    name: 'Popscore',
     description:
       'Hover a movie title on cinema and streaming sites to see its IMDb rating. Movie data from TMDB and OMDb.',
     permissions: ['storage', 'scripting', 'activeTab'],
@@ -24,7 +24,7 @@ export default defineConfig({
     optional_host_permissions: ['<all_urls>'],
     browser_specific_settings: {
       gecko: {
-        id: 'worth-it@screen-score',
+        id: 'popscore@screen-score',
         data_collection_permissions: { required: ['websiteContent'] },
       },
     },
