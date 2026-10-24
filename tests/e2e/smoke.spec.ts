@@ -436,6 +436,44 @@ test('keeps a tag above the layers a tile draws over its poster', async () => {
   await page.screenshot({ path: 'test-results/tags-ranked.png' });
 });
 
+test('keeps a tag under the page header when the poster scrolls beneath it', async () => {
+  await setKeys('tmdb-mock', 'omdb-mock');
+  await mockMovieApis();
+  // Like cinemahlen.de: a fixed header with a small z-index over a page of plain, static posters.
+  await context.route(RANKED_URL, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: `<!doctype html><html lang="de"><body style="margin:0">
+        <header style="position:fixed;top:0;left:0;right:0;height:120px;z-index:2;background:#911">
+          Programm
+        </header>
+        <main style="padding-top:140px;height:3000px">
+          <a href="#"><img id="poster-oppenheimer" alt="Oppenheimer" width="160" height="240"
+            style="display:block;background:#ccc" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
+        </main>
+      </body></html>`,
+    }),
+  );
+
+  const page = await context.newPage();
+  await page.goto(RANKED_URL);
+  const tag = page.locator('popscore-tag');
+  await expect(tag).toHaveCount(1, { timeout: 10_000 });
+  await page.evaluate(() => scrollTo(0, 60));
+
+  const topmost = () =>
+    tag.evaluate((host) => {
+      const r = host.getBoundingClientRect();
+      host.style.setProperty('pointer-events', 'auto', 'important');
+      const top = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2)[0];
+      host.style.setProperty('pointer-events', 'none', 'important');
+      return top === host ? 'tag' : top.tagName;
+    });
+  await expect.poll(topmost).toBe('HEADER');
+  await page.screenshot({ path: 'test-results/tags-header.png' });
+});
+
 test('no tags when they are switched off', async () => {
   await setKeys('tmdb-mock', 'omdb-mock', { scoreTags: false });
   await mockMovieApis();

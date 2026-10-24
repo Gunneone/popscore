@@ -12,12 +12,18 @@ const INSET = 6;
 const MAX_ATTACHES = 4;
 /** How many levels above the poster's own container a tag may climb to get out from under a layer. */
 const MAX_LIFT = 3;
-/** A tag only climbs into containers about the size of its poster, so it stays with its tile. */
+/** How high a tag may raise its z-index to get above a layer, at each level. */
+const MAX_Z = 3;
+/**
+ * A tag only climbs into containers about the size of its poster, so it stays with its tile, and
+ * only gets above layers about that size, so it stays under the page's headers and menus.
+ */
 const TILE_SLACK = 1.25;
 
 const HOST_STYLE: Record<TagPlacement['kind'], Record<string, string>> = {
-  // Low z-index: above the poster, but under the site's sticky headers, menus and dialogs.
-  poster: { position: 'absolute', left: '0', top: '0', 'z-index': '3', display: 'block' },
+  // Above the poster, but under anything of the page with a z-index (headers, menus, dialogs).
+  // `lift` raises it if a layer of the tile itself covers it.
+  poster: { position: 'absolute', left: '0', top: '0', 'z-index': '0', display: 'block' },
   title: {
     position: 'static',
     display: 'inline-block',
@@ -76,6 +82,7 @@ export class ScoreTag {
       // The page re-rendered the tile: start over with whatever it drew now.
       this.lifted = null;
       this.settled = false;
+      this.raise(0);
     }
     const parent = this.lifted ?? this.home();
     if (!parent) return false;
@@ -103,10 +110,11 @@ export class ScoreTag {
   }
 
   /**
-   * A tag inside the poster's container is drawn in that container's stacking context, so a layer
-   * the tile puts over its poster (a rank numeral, a gradient) hides it however high its z-index
-   * is. If something is drawn over it, the tag climbs out of the poster's containers one at a time
-   * until nothing is, and stays put if no tile-sized container helps. Looks once.
+   * A layer the tile puts over its poster (a rank numeral, a gradient) may have a higher z-index
+   * than the tag, or sit outside the stacking context of the poster's container, where no z-index
+   * of the tag helps. If one is drawn over it, the tag raises its z-index a step at a time, then
+   * climbs out of the poster's containers one at a time, until nothing is; it stays put if no
+   * tile-sized container helps. Looks once.
    */
   private lift(): void {
     if (this.settled || !this.attached || this.placement.kind !== 'poster') return;
@@ -115,32 +123,67 @@ export class ScoreTag {
     if (covered === undefined) return;
     this.settled = true;
     this.visible?.disconnect();
-    if (!covered) return;
+    const home = this.host.parentElement;
+    if (!covered || !home) return;
 
     const poster = this.placement.img.getBoundingClientRect();
-    const home = this.host.parentElement;
     const tileSized = (el: Element) => {
       const r = el.getBoundingClientRect();
       return r.width <= poster.width * TILE_SLACK && r.height <= poster.height * TILE_SLACK;
     };
-    let el = home?.parentElement ?? null;
+    const levels = [home];
+    let el = home.parentElement;
     for (let depth = 0; el && depth < MAX_LIFT && tileSized(el); depth++, el = el.parentElement) {
-      el.append(this.host);
-      this.measure()?.();
-      if (this.covered() === false) {
-        this.lifted = el;
-        return;
+      levels.push(el);
+    }
+    for (const level of levels) {
+      if (level !== home) level.append(this.host);
+      for (let z = level === home ? 1 : 0; z <= MAX_Z; z++) {
+        this.raise(z);
+        this.measure()?.();
+        if (this.covered() === false) {
+          if (level !== home) this.lifted = level;
+          return;
+        }
       }
     }
-    home?.append(this.host);
+    home.append(this.host);
     this.measure()?.();
   }
 
+  private raise(z: number): void {
+    this.host.style.setProperty('z-index', String(z), 'important');
+  }
+
   /**
-   * Whether anything of the page is drawn over the tag, judged by what the browser would hit at a
-   * few points of it. Undefined if it can't tell: the tag is off screen or clipped away.
+   * Whether a layer over just the poster is drawn over the tag, judged by what the browser would
+   * hit at a few points of it. Headers, menus and dialogs over it don't count: the tag belongs
+   * under those. Undefined if it can't tell: the tag is off screen or clipped away.
    */
   private covered(): boolean | undefined {
+    if (this.placement.kind !== 'poster') return undefined;
+    const img = this.placement.img;
+    const poster = img.getBoundingClientRect();
+    const slackX = poster.width * (TILE_SLACK - 1);
+    const slackY = poster.height * (TILE_SLACK - 1);
+    const overPoster = (el: Element) => {
+      if (el.contains(this.host) || el.tagName.startsWith('POPSCORE-')) return false;
+      const r = el.getBoundingClientRect();
+      if (
+        r.left < poster.left - slackX ||
+        r.right > poster.right + slackX ||
+        r.top < poster.top - slackY ||
+        r.bottom > poster.bottom + slackY
+      ) {
+        return false;
+      }
+      // A logo or button of a fixed header can be poster-sized too.
+      for (let a: Element | null = el; a && !a.contains(img); a = a.parentElement) {
+        const { position } = getComputedStyle(a);
+        if (position === 'fixed' || position === 'sticky') return false;
+      }
+      return true;
+    };
     const r = this.host.getBoundingClientRect();
     const probes = [
       [0.5, 0.5],
@@ -158,10 +201,7 @@ export class ScoreTag {
         const at = stack.indexOf(this.host);
         if (at < 0) continue;
         seen = true;
-        const over = stack
-          .slice(0, at)
-          .some((el) => !el.contains(this.host) && !el.tagName.startsWith('POPSCORE-'));
-        if (over) return true;
+        if (stack.slice(0, at).some(overPoster)) return true;
       }
       return seen ? false : undefined;
     } finally {
