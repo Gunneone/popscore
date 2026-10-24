@@ -2,6 +2,7 @@
 #   docker compose up -d --build
 services:
   popscore-server:
+    image: popscore-server
     build:
       context: .
       dockerfile: server/Dockerfile
