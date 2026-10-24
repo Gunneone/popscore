@@ -7,6 +7,8 @@ import path from 'node:path';
 const EXTENSION = path.resolve('dist/chrome');
 const FIXTURE = readFileSync(path.resolve('e2e/fixtures/cinema.html'), 'utf8');
 const PAGE_URL = 'https://www.cinestar.de/worth-it-e2e';
+const RANKED = readFileSync(path.resolve('e2e/fixtures/ranked.html'), 'utf8');
+const RANKED_URL = 'https://www.cinestar.de/worth-it-ranked';
 
 // The extension's service worker global, where `evaluate` runs.
 declare const chrome: { storage: { sync: { set(items: object): Promise<void> } } };
@@ -218,10 +220,10 @@ test('tags every film with its score, on the poster or after the title', async (
   await expect(tag(1311031)).toHaveAttribute('data-score', '5.1');
   await expect(tag(1311031)).toHaveAttribute('data-verdict', 'bad');
 
-  // In the poster's top-left corner.
+  // In the poster's top-right corner.
   const poster = (await page.locator('#poster-dune').boundingBox())!;
   const box = (await tag(693134).boundingBox())!;
-  expect(Math.abs(box.x - (poster.x + 6))).toBeLessThan(2);
+  expect(Math.abs(box.x + box.width - (poster.x + poster.width - 6))).toBeLessThan(2);
   expect(Math.abs(box.y - (poster.y + 6))).toBeLessThan(2);
 
   // A text link gets it after its title; the TV show and other links get none.
@@ -232,10 +234,41 @@ test('tags every film with its score, on the poster or after the title', async (
   await page.screenshot({ path: 'test-results/tags.png' });
 
   // The hover card still opens through the tag.
-  await page.locator('#poster-dune').hover({ position: { x: 12, y: 12 } });
+  await page.locator('#poster-dune').hover({ position: { x: 140, y: 12 } });
   await expect(page.locator('worth-it-card')).toHaveAttribute('data-state', 'match', {
     timeout: 5000,
   });
+});
+
+test('keeps a tag above the layers a tile draws over its poster', async () => {
+  await setKeys('tmdb-mock', 'omdb-mock');
+  await mockMovieApis();
+  await context.route(RANKED_URL, (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: RANKED }),
+  );
+
+  const page = await context.newPage();
+  await page.goto(RANKED_URL);
+  const tag = page.locator('worth-it-tag');
+  await expect(tag).toHaveCount(1, { timeout: 10_000 });
+
+  // The topmost element at the tag's center, with the tag made hit-testable for a moment.
+  const topmost = () =>
+    tag.evaluate((host) => {
+      const r = host.getBoundingClientRect();
+      host.style.setProperty('pointer-events', 'auto', 'important');
+      const top = document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2)[0];
+      host.style.setProperty('pointer-events', 'none', 'important');
+      return top === host ? 'tag' : top.className;
+    });
+  await expect.poll(topmost).toBe('tag');
+
+  // Still in the poster's top-right corner.
+  const poster = (await page.locator('#poster-oppenheimer').boundingBox())!;
+  const box = (await tag.boundingBox())!;
+  expect(Math.abs(box.x + box.width - (poster.x + poster.width - 6))).toBeLessThan(2);
+  expect(Math.abs(box.y - (poster.y + 6))).toBeLessThan(2);
+  await page.screenshot({ path: 'test-results/tags-ranked.png' });
 });
 
 test('no tags when they are switched off', async () => {
