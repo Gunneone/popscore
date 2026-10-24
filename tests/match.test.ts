@@ -168,6 +168,68 @@ describe('rankResults', () => {
     expect(top.confident).toBe(true);
   });
 
+  it('is not confident about a show\'s special when the query names a series ("Stranger Things" tile)', () => {
+    // TMDB's top results for "Stranger Things" (de-DE), all filed as movies.
+    const results = [
+      movie({
+        tmdbId: 1610413,
+        title: 'Ein letztes Abenteuer: Making Stranger Things 5',
+        originalTitle: 'One Last Adventure: The Making of Stranger Things 5',
+        year: 2026,
+        releaseDate: '2026-01-11',
+        voteCount: 98,
+      }),
+      movie({
+        tmdbId: 1594337,
+        title: 'Stranger Things: Kaminfeuer',
+        originalTitle: 'Stranger Things: Fireplace',
+        year: 2025,
+        releaseDate: '2025-12-01',
+        voteCount: 84,
+      }),
+      movie({
+        tmdbId: 182026,
+        title: 'Stranger Things',
+        year: 2013,
+        releaseDate: '2013-04-05',
+        voteCount: 81,
+      }),
+      movie({
+        tmdbId: 1455575,
+        title: 'Hinter den Kulissen von Stranger Things: The First Shadow',
+        originalTitle: 'Behind the Curtain: Stranger Things: The First Shadow',
+        year: 2025,
+        releaseDate: '2025-04-14',
+        voteCount: 36,
+      }),
+      movie({ tmdbId: 1633210, title: 'Stranger Things: The First Shadow', voteCount: 0 }),
+      movie({
+        tmdbId: 1664583,
+        title: "Stranger Things: Tales from '85 Theatrical Preview",
+        year: 2026,
+        releaseDate: '2026-04-18',
+        voteCount: 3,
+      }),
+    ];
+    const [top] = rankResults('Stranger Things', undefined, results, { cinema: true, now });
+    expect(top.confident).toBe(false);
+    // A subtitle the query alone names is still fine: German title plus the original.
+    const unfassbaren = movie({
+      tmdbId: 75656,
+      title: 'Die Unfassbaren - Now You See Me',
+      originalTitle: 'Now You See Me',
+      year: 2013,
+      releaseDate: '2013-05-29',
+    });
+    const sequel = movie({ tmdbId: 291805, title: 'Die Unfassbaren 2', year: 2016 });
+    const [film] = rankResults('Die Unfassbaren', undefined, [unfassbaren, sequel], {
+      cinema: true,
+      now,
+    });
+    expect(film.movie.tmdbId).toBe(75656);
+    expect(film.confident).toBe(true);
+  });
+
   it('is not confident when the year hint is far off', () => {
     const [top] = rankResults('Dune', 1999, [dune2021], { cinema: false, now });
     expect(top.confident).toBe(false);

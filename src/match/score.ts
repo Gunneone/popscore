@@ -1,5 +1,5 @@
 import type { MovieSummary } from '../types';
-import { titleSimilarity } from './normalize';
+import { extendsTitle, titleSimilarity } from './normalize';
 
 export interface ScoreContext {
   cinema: boolean;
@@ -35,11 +35,15 @@ export function rankResults(
   results: MovieSummary[],
   ctx: ScoreContext,
 ): Scored[] {
-  const scored = results.map((movie): Scored => {
-    const sim = Math.max(
-      titleSimilarity(query, movie.title),
-      titleSimilarity(query, movie.originalTitle),
-    );
+  const matches = results.map((movie) => ({
+    movie,
+    sim: Math.max(titleSimilarity(query, movie.title), titleSimilarity(query, movie.originalTitle)),
+    subtitled: extendsTitle(query, movie.title) || extendsTitle(query, movie.originalTitle),
+  }));
+  // How many results the query names: as their whole title, or with a subtitle added.
+  const named = matches.filter((m) => m.sim === 1 || m.subtitled).length;
+
+  const scored = matches.map(({ movie, sim, subtitled }): Scored => {
     const recent = isCurrent(movie, ctx.now);
     const current = ctx.cinema && recent;
 
@@ -62,7 +66,12 @@ export function rankResults(
     // Exact-title hits on obscure films are how UI labels like "Play" turn into false matches.
     // New releases are exempt: they have few votes everywhere, streaming sites included.
     const obscure = movie.voteCount < 15 && !recent;
-    const confident = sim >= CONFIDENT_SIMILARITY && yearOk && !obscure && !tvOnly;
+    // Only the subtitle is missing ("Stranger Things" -> "Stranger Things: Fireplace"). Fine when
+    // the query names just this film. When it names others too (the plain title, more
+    // "<Title>: ..." specials or sequels), it's a show or franchise, and year and popularity
+    // picked this one, not the title.
+    const ambiguous = subtitled && sim < 1 && named > 1;
+    const confident = sim >= CONFIDENT_SIMILARITY && yearOk && !obscure && !tvOnly && !ambiguous;
     return { movie, sim, score, confident };
   });
   return scored.sort((a, b) => b.score - a.score);
