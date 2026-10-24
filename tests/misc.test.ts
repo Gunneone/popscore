@@ -9,7 +9,8 @@ import {
   REGION_NAMES,
   siteState,
 } from '../src/sites';
-import { displayScore, formatRuntime, formatVotes, verdict } from '../src/ui/format';
+import { mediaKinds } from '../src/settings';
+import { displayScore, formatRuntime, formatVotes, formatYears, verdict } from '../src/ui/format';
 import { placeCard } from '../src/ui/position';
 
 describe('sites', () => {
@@ -162,6 +163,22 @@ describe('format', () => {
     expect(verdict(6.9, 7, 6)).toBe('okay');
     expect(verdict(5.9, 7, 6)).toBe('bad');
     expect(verdict(null, 7, 6)).toBe('none');
+  });
+
+  it("gives a film's year and a show's run", () => {
+    expect(formatYears({ kind: 'movie', year: 2021 })).toBe('2021');
+    expect(formatYears({ kind: 'tv', year: 2017, lastYear: 2020, ended: true })).toBe('2017–2020');
+    expect(formatYears({ kind: 'tv', year: 2019, lastYear: 2025, ended: false })).toBe('2019–');
+    expect(formatYears({ kind: 'tv', year: 2019, lastYear: 2019, ended: true })).toBe('2019');
+    expect(formatYears({ kind: 'movie' })).toBeNull();
+  });
+});
+
+describe('mediaKinds', () => {
+  it('lists what is switched on, and never nothing', () => {
+    expect(mediaKinds({ movies: true, tvShows: true })).toEqual(['movie', 'tv']);
+    expect(mediaKinds({ movies: false, tvShows: true })).toEqual(['tv']);
+    expect(mediaKinds({ movies: false, tvShows: false })).toEqual(['movie']);
   });
 });
 

@@ -1,3 +1,5 @@
+import type { MediaKind } from '../types';
+
 export type Verdict = 'good' | 'okay' | 'bad' | 'none';
 
 export function verdict(rating: number | null, greenAt: number, amberAt: number): Verdict {
@@ -34,6 +36,19 @@ export function formatVotes(votes: number): string {
   if (votes < 1000) return String(votes);
   if (votes < 1_000_000) return `${Math.round(votes / 1000)}k`;
   return `${(votes / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+}
+
+/** A film's year; a show's run: "2016–2025", or "2019–" while it's still running. */
+export function formatYears(m: {
+  kind: MediaKind;
+  year?: number;
+  lastYear?: number;
+  ended?: boolean;
+}): string | null {
+  if (m.year === undefined) return null;
+  if (m.kind !== 'tv') return String(m.year);
+  if (!m.ended) return `${m.year}–`;
+  return m.lastYear && m.lastYear !== m.year ? `${m.year}–${m.lastYear}` : String(m.year);
 }
 
 /** 166 -> "2h 46m", 45 -> "45m" */

@@ -4,15 +4,28 @@ import { TMDB_IMAGE } from './api/tmdb';
 import { cacheGet, cacheSet, DAY } from './cache';
 import { normalizeTitle } from './match/normalize';
 import { rankResults, type Scored } from './match/score';
-import { countOmdbCall, getPick, getSettings, getUsage, hasKeys, savePick } from './settings';
-import type {
-  ImdbRating,
-  LookupError,
-  LookupRequest,
-  LookupResult,
-  MovieCard,
-  MovieDetails,
-  MovieSummary,
+import {
+  countOmdbCall,
+  getPick,
+  getSettings,
+  getUsage,
+  hasKeys,
+  mediaKinds,
+  savePick,
+  type PickRef,
+  type Settings,
+} from './settings';
+import {
+  titleKey,
+  type Candidate,
+  type ImdbRating,
+  type LookupError,
+  type LookupRequest,
+  type LookupResult,
+  type MediaKind,
+  type MovieCard,
+  type MovieDetails,
+  type MovieSummary,
 } from './types';
 
 const MAX_CANDIDATES = 3;
@@ -35,30 +48,35 @@ export function tmdbLanguage(pageLang: string): string {
   return base === 'en' ? 'en-US' : `${base}-${base.toUpperCase()}`;
 }
 
-async function resolveProvider(deps: LookupDeps): Promise<RatingsProvider | null> {
+async function resolveProvider(
+  deps: LookupDeps,
+  settings: Settings,
+): Promise<RatingsProvider | null> {
   if (deps.provider) return deps.provider;
-  const settings = await getSettings();
   return hasKeys(settings) ? directProvider(settings) : null;
 }
 
 async function cachedSearch(
   provider: RatingsProvider,
+  kind: MediaKind,
   query: string,
   year: number | undefined,
   language: string,
 ): Promise<MovieSummary[]> {
-  // "s2": entries from before TV movies were flagged lack tvMovie.
-  const key = `s2:${language}:${year ?? ''}:${normalizeTitle(query)}`;
+  // TV search takes no year (see searchTv).
+  if (kind === 'tv') year = undefined;
+  // "s3": entries from before TV shows lack kind.
+  const key = `s3:${kind}:${language}:${year ?? ''}:${normalizeTitle(query)}`;
   const hit = await cacheGet<MovieSummary[]>(key);
   if (hit) return hit;
-  let results = await provider.search(query, { language, year });
+  let results = await provider.search(query, { kind, language, year });
   // A wrong year hint (e.g. German release year vs original year) shouldn't hide the film.
   if (results.length === 0 && year !== undefined) {
-    results = await provider.search(query, { language });
+    results = await provider.search(query, { kind, language });
   }
   // Pages without a lang attribute may be in another language than we guessed.
   if (results.length === 0 && language !== 'en-US') {
-    results = await provider.search(query, { language: 'en-US' });
+    results = await provider.search(query, { kind, language: 'en-US' });
   }
   await cacheSet(key, results, results.length ? 30 * DAY : 7 * DAY);
   return results;
@@ -66,18 +84,31 @@ async function cachedSearch(
 
 async function cachedDetails(
   provider: RatingsProvider,
-  tmdbId: number,
+  ref: PickRef,
   now: Date,
 ): Promise<MovieDetails> {
-  // "d2": entries from before TMDB scores were stored lack tmdbRating.
-  const key = `d2:${tmdbId}`;
+  // "d3": entries from before TV shows lack kind.
+  const key = `d3:${ref.kind}:${ref.tmdbId}`;
   const hit = await cacheGet<MovieDetails>(key);
   if (hit) return hit;
-  const details = await provider.details(tmdbId);
-  // New films change quickly (IMDb id added, TMDB score moving), so refresh them daily.
-  const recent = details.year === undefined || details.year >= now.getFullYear() - 1;
+  const details = await provider.details(ref.tmdbId, ref.kind);
+  // New films and running shows change quickly (IMDb id added, TMDB score moving, new seasons),
+  // so refresh them daily.
+  const latest = details.lastYear ?? details.year;
+  const recent = latest === undefined || latest >= now.getFullYear() - 1;
   await cacheSet(key, details, recent ? 1 * DAY : 30 * DAY);
   return details;
+}
+
+/**
+ * What to search for a candidate: TV only when it names a season or links to a series, movies
+ * only for automatic lookups on cinema pages (cinemas don't show series), and only kinds the
+ * user switched on.
+ */
+function kindsFor(cand: Candidate, enabled: MediaKind[], req: LookupRequest): MediaKind[] {
+  if (cand.series) return enabled.filter((k) => k === 'tv');
+  if (req.cinema && req.mode === 'auto') return enabled.filter((k) => k === 'movie');
+  return enabled;
 }
 
 async function cachedRating(
@@ -124,10 +155,10 @@ export async function fetchPosterDataUrl(path: string, size = 'w154'): Promise<s
 
 async function buildCard(
   provider: RatingsProvider,
-  tmdbId: number,
+  ref: PickRef,
   deps: LookupDeps,
 ): Promise<{ movie: MovieCard; ratingError?: LookupError }> {
-  const details = await cachedDetails(provider, tmdbId, deps.now ?? new Date());
+  const details = await cachedDetails(provider, ref, deps.now ?? new Date());
   let rating: ImdbRating = { rating: null, votes: null };
   let ratingError: LookupError | undefined;
   if (details.imdbId) {
@@ -144,30 +175,53 @@ async function buildCard(
   return { movie: { ...details, ...rating, poster }, ratingError };
 }
 
-function others(scored: Scored[], exceptId: number): MovieSummary[] {
-  return scored
-    .map((s) => s.movie)
-    .filter((m) => m.tmdbId !== exceptId)
-    .slice(0, 5);
+function except(movies: MovieSummary[], ref: PickRef | null): MovieSummary[] {
+  const skip = ref && titleKey(ref);
+  return movies.filter((m) => titleKey(m) !== skip).slice(0, 5);
+}
+
+function others(scored: Scored[], ref: PickRef | null): MovieSummary[] {
+  return except(
+    scored.map((s) => s.movie),
+    ref,
+  );
+}
+
+/** Movie and TV results for one candidate, in one list for ranking. */
+async function searchKinds(
+  provider: RatingsProvider,
+  kinds: MediaKind[],
+  query: string,
+  year: number | undefined,
+  language: string,
+): Promise<MovieSummary[]> {
+  const lists = await Promise.all(
+    kinds.map((kind) => cachedSearch(provider, kind, query, year, language)),
+  );
+  return lists.flat();
 }
 
 export async function lookup(req: LookupRequest, deps: LookupDeps = {}): Promise<LookupResult> {
   try {
-    const provider = await resolveProvider(deps);
+    const settings = await getSettings();
+    const provider = await resolveProvider(deps, settings);
     if (!provider) return { status: 'error', error: 'missing-keys' };
     const language = tmdbLanguage(req.pageLang);
     const now = deps.now ?? new Date();
+    const enabled = mediaKinds(settings);
 
     let best: { query: string; scored: Scored[] } | null = null;
     for (const cand of req.candidates.slice(0, MAX_CANDIDATES)) {
       const norm = normalizeTitle(cand.text);
       if (!norm) continue;
+      const kinds = kindsFor(cand, enabled, req);
+      if (kinds.length === 0) continue;
 
-      const pickedId = await getPick(norm);
-      if (pickedId !== undefined) {
-        const results = await cachedSearch(provider, cand.text, cand.year, language);
-        const { movie, ratingError } = await buildCard(provider, pickedId, deps);
-        const alternatives = results.filter((m) => m.tmdbId !== pickedId).slice(0, 5);
+      const picked = await getPick(norm);
+      if (picked !== undefined) {
+        const results = await searchKinds(provider, kinds, cand.text, cand.year, language);
+        const { movie, ratingError } = await buildCard(provider, picked, deps);
+        const alternatives = except(results, picked);
         return {
           status: 'match',
           query: cand.text,
@@ -180,8 +234,9 @@ export async function lookup(req: LookupRequest, deps: LookupDeps = {}): Promise
       }
 
       // TMDB's year filter would hide the film when a soft year is wrong, so it only ranks.
-      const results = await cachedSearch(
+      const results = await searchKinds(
         provider,
+        kinds,
         cand.text,
         cand.softYear ? undefined : cand.year,
         language,
@@ -201,16 +256,16 @@ export async function lookup(req: LookupRequest, deps: LookupDeps = {}): Promise
     const top = best?.scored[0];
     const accept = top && (req.mode === 'auto' ? top.confident : top.sim >= 0.5);
     if (!top || !accept) {
-      return { status: 'nomatch', query, alternatives: best ? others(best.scored, -1) : [] };
+      return { status: 'nomatch', query, alternatives: best ? others(best.scored, null) : [] };
     }
 
-    const { movie, ratingError } = await buildCard(provider, top.movie.tmdbId, deps);
+    const { movie, ratingError } = await buildCard(provider, top.movie, deps);
     return {
       status: 'match',
       query,
       confidence: top.score,
       movie,
-      alternatives: others(best!.scored, top.movie.tmdbId),
+      alternatives: others(best!.scored, top.movie),
       picked: false,
       ratingError,
     };
@@ -219,24 +274,24 @@ export async function lookup(req: LookupRequest, deps: LookupDeps = {}): Promise
   }
 }
 
-/** "Wrong movie?" choice: remember it for this hovered text and return the chosen film's card. */
+/** "Wrong movie?" choice: remember it for this hovered text and return the chosen title's card. */
 export async function pickMovie(
   query: string,
-  tmdbId: number,
+  ref: PickRef,
   alternatives: MovieSummary[],
   deps: LookupDeps = {},
 ): Promise<LookupResult> {
   try {
-    const provider = await resolveProvider(deps);
+    const provider = await resolveProvider(deps, await getSettings());
     if (!provider) return { status: 'error', error: 'missing-keys' };
-    await savePick(normalizeTitle(query), tmdbId);
-    const { movie, ratingError } = await buildCard(provider, tmdbId, deps);
+    await savePick(normalizeTitle(query), ref);
+    const { movie, ratingError } = await buildCard(provider, ref, deps);
     return {
       status: 'match',
       query,
       confidence: 1,
       movie,
-      alternatives: alternatives.filter((m) => m.tmdbId !== tmdbId),
+      alternatives: alternatives.filter((m) => titleKey(m) !== titleKey(ref)),
       picked: true,
       ratingError,
     };

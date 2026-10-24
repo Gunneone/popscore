@@ -24,8 +24,9 @@ async function handle(msg: Message): Promise<Responses[Message['type']]> {
       const result = await lookup(msg.req, { skipPoster: true, omdbBudget: TAG_OMDB_BUDGET });
       if (result.status === 'error') throw new Error(result.error);
       if (result.status !== 'match') return null;
+      const { kind, tmdbId } = result.movie;
       const score = displayScore(result.movie);
-      return score && { tmdbId: result.movie.tmdbId, value: score.value, source: score.source };
+      return score && { kind, tmdbId, value: score.value, source: score.source };
     }
     case 'search': {
       const result = await lookup({
@@ -35,11 +36,11 @@ async function handle(msg: Message): Promise<Responses[Message['type']]> {
         mode: 'manual',
       });
       if (result.status !== 'match') return result;
-      await savePick(normalizeTitle(msg.original), result.movie.tmdbId);
+      await savePick(normalizeTitle(msg.original), result.movie);
       return { ...result, query: msg.original, picked: true };
     }
     case 'pick':
-      return pickMovie(msg.query, msg.tmdbId, msg.alternatives);
+      return pickMovie(msg.query, { kind: msg.kind, tmdbId: msg.tmdbId }, msg.alternatives);
     case 'posters': {
       const entries = await Promise.all(
         msg.paths.map(async (p) => [p, await fetchPosterDataUrl(p, 'w92')] as const),

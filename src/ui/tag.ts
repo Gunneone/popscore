@@ -39,6 +39,7 @@ export class ScoreTag {
   ) {
     this.host = document.createElement(TAG_ELEMENT);
     this.host.setAttribute('aria-hidden', 'true');
+    this.host.dataset.kind = score.kind;
     this.host.dataset.tmdb = String(score.tmdbId);
     this.host.dataset.score = score.value.toFixed(1);
     // Page CSS could match the element (`li > *`); inline !important wins over it.

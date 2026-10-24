@@ -1,6 +1,6 @@
 export interface StructuredInfo {
-  /** Movies described by JSON-LD or OpenGraph on this page. */
-  movies: { title: string; year?: number }[];
+  /** Movies and TV shows described by JSON-LD or OpenGraph on this page. */
+  titles: { title: string; year?: number; series?: boolean }[];
   /** Page lists screenings (schema.org ScreeningEvent), i.e. it's a cinema page. */
   hasScreenings: boolean;
 }
@@ -16,12 +16,14 @@ function yearFrom(v: unknown): number | undefined {
 }
 
 export function readStructured(doc: Document): StructuredInfo {
-  const info: StructuredInfo = { movies: [], hasScreenings: false };
+  const info: StructuredInfo = { titles: [], hasScreenings: false };
   const seen = new Set<string>();
-  const addMovie = (title: unknown, year?: number) => {
+  const addTitle = (title: unknown, year?: number, series = false) => {
     if (typeof title !== 'string' || !title.trim() || seen.has(title)) return;
     seen.add(title);
-    info.movies.push({ title: title.trim(), year });
+    info.titles.push(
+      series ? { title: title.trim(), year, series } : { title: title.trim(), year },
+    );
   };
 
   const visit = (node: unknown, depth: number): void => {
@@ -34,7 +36,11 @@ export function readStructured(doc: Document): StructuredInfo {
     const t = types(obj);
     if (t.includes('ScreeningEvent')) info.hasScreenings = true;
     if (t.includes('Movie')) {
-      addMovie(obj.name, yearFrom(obj.datePublished) ?? yearFrom(obj.dateCreated));
+      addTitle(obj.name, yearFrom(obj.datePublished) ?? yearFrom(obj.dateCreated));
+    }
+    // Not TVSeason or TVEpisode: their names aren't the show's.
+    if (t.includes('TVSeries')) {
+      addTitle(obj.name, yearFrom(obj.startDate) ?? yearFrom(obj.datePublished), true);
     }
     for (const v of Object.values(obj)) visit(v, depth + 1);
   };
@@ -49,6 +55,7 @@ export function readStructured(doc: Document): StructuredInfo {
 
   const ogType = doc.querySelector('meta[property="og:type"]')?.getAttribute('content') ?? '';
   const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content');
-  if (ogType.startsWith('video.movie') && ogTitle) addMovie(ogTitle);
+  if (ogType.startsWith('video.movie') && ogTitle) addTitle(ogTitle);
+  if (ogType.startsWith('video.tv_show') && ogTitle) addTitle(ogTitle, undefined, true);
   return info;
 }

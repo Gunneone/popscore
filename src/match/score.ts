@@ -45,7 +45,13 @@ export function rankResults(
 
     let yearScore: number;
     let yearOk = true;
-    if (yearHint !== undefined) {
+    if (yearHint !== undefined && movie.kind === 'tv') {
+      // A show runs for years, and tiles often show the latest season's: any year from its first
+      // on fits. (Search results only know the first.)
+      const since = movie.year === undefined ? undefined : yearHint - movie.year;
+      yearScore = since === undefined ? 0.3 : since === 0 ? 1 : since > 0 || since === -1 ? 0.6 : 0;
+      yearOk = !!ctx.softYear || (since !== undefined && since >= -1);
+    } else if (yearHint !== undefined) {
       const delta = movie.year === undefined ? undefined : Math.abs(movie.year - yearHint);
       yearScore = delta === undefined ? 0.3 : delta === 0 ? 1 : delta === 1 ? 0.6 : 0;
       yearOk = !!ctx.softYear || (delta !== undefined && delta <= 1);
@@ -56,8 +62,9 @@ export function rankResults(
     }
 
     const popScore = Math.min(1, Math.log10(1 + movie.voteCount) / 4);
-    // Cinemas don't show TV movies; matching one usually means a page label was read as a title.
-    const tvOnly = ctx.cinema && movie.tvMovie === true;
+    // Cinemas don't show TV movies or series; matching one usually means a page label was read as
+    // a title.
+    const tvOnly = ctx.cinema && (movie.tvMovie === true || movie.kind === 'tv');
     const score = sim * 0.7 + yearScore * 0.18 + popScore * 0.12 - (tvOnly ? 0.2 : 0);
     // Exact-title hits on obscure films are how UI labels like "Play" turn into false matches.
     // New releases are exempt: they have few votes everywhere, streaming sites included.
