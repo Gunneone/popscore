@@ -219,6 +219,8 @@ export function siteState(url: string, s: SiteSettings): SiteState {
 export const API_HOST_PERMISSIONS = [
   'https://api.themoviedb.org/*',
   'https://image.tmdb.org/*',
+  // The weekly TV series list (src/series.ts): sent without CORS headers, so it needs the host.
+  'https://files.tmdb.org/*',
   'https://www.omdbapi.com/*',
 ];
 

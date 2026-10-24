@@ -2,7 +2,7 @@ import { browser } from 'wxt/browser';
 import { getSettings } from './settings';
 import { DEFAULT_SITE_MATCHES } from './sites';
 
-const SCRIPT_ID = 'worth-it-extra-sites';
+const SCRIPT_ID = 'popscore-extra-sites';
 export const CONTENT_SCRIPT_FILE = 'content-scripts/content.js';
 
 /**
@@ -45,6 +45,6 @@ let queue: Promise<void> = Promise.resolve();
 export function syncContentScripts(): Promise<void> {
   queue = queue
     .then(sync)
-    .catch((err) => console.warn('[Worth It?] script registration failed', err));
+    .catch((err) => console.warn('[Popscore] script registration failed', err));
   return queue;
 }

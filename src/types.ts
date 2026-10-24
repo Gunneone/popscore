@@ -35,6 +35,13 @@ export interface MovieSummary {
   tvMovie?: boolean;
 }
 
+/** A TV series from TMDB's TV search: only used to tell a series from a film of the same name. */
+export interface SeriesSummary {
+  name: string;
+  originalName: string;
+  popularity: number;
+}
+
 export interface MovieDetails {
   tmdbId: number;
   title: string;

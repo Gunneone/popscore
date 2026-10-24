@@ -6,7 +6,7 @@ import path from 'node:path';
 // cinema domain, so the manifest's content script runs. Build first: `npm run build`.
 const EXTENSION = path.resolve('dist/chrome');
 const FIXTURE = readFileSync(path.resolve('e2e/fixtures/cinema.html'), 'utf8');
-const PAGE_URL = 'https://www.cinestar.de/worth-it-e2e';
+const PAGE_URL = 'https://www.cinestar.de/popscore-e2e';
 
 // The extension's service worker global, where `evaluate` runs.
 declare const chrome: { storage: { sync: { set(items: object): Promise<void> } } };
@@ -21,6 +21,7 @@ test.beforeEach(async () => {
   await context.route(PAGE_URL, (route) =>
     route.fulfill({ status: 200, contentType: 'text/html', body: FIXTURE }),
   );
+  await failSeriesList();
 });
 
 test.afterEach(async () => {
@@ -33,6 +34,24 @@ async function setKeys(tmdbKey: string, omdbKey: string, extra: object = {}) {
     tmdbKey,
     omdbKey,
     ...extra,
+  });
+}
+
+/**
+ * Fails the download of TMDB's weekly TV series list (5 MB from files.tmdb.org) inside the
+ * extension's service worker, before any lookup starts it. Lookups then ask TMDB's TV search,
+ * as on a first run before the list arrives. The mocks below pass it through.
+ */
+async function failSeriesList() {
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  await worker.evaluate(() => {
+    const g = globalThis as unknown as { fetch: typeof fetch };
+    const real = g.fetch.bind(globalThis);
+    g.fetch = async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.startsWith('https://files.tmdb.org/')) return new Response(null, { status: 403 });
+      return real(input, init);
+    };
   });
 }
 
@@ -77,6 +96,8 @@ async function mockMovieApis() {
     g.fetch = async (input, init) => {
       const url = new URL(input instanceof Request ? input.url : String(input));
       if (url.hostname === 'api.themoviedb.org') {
+        // No TV series of the films' names.
+        if (url.pathname === '/3/search/tv') return json({ results: [] });
         if (url.pathname === '/3/search/movie') {
           const q = (url.searchParams.get('query') ?? '').toLowerCase();
           const hits = films.filter((f) => q.includes(f.key));
@@ -117,7 +138,7 @@ test('asks for API keys when none are set', async () => {
   const page = await context.newPage();
   await page.goto(PAGE_URL);
   await page.locator('#poster-dune').hover();
-  await expect(page.locator('worth-it-card')).toHaveAttribute('data-state', 'error:missing-keys', {
+  await expect(page.locator('popscore-card')).toHaveAttribute('data-state', 'error:missing-keys', {
     timeout: 5000,
   });
 });
@@ -133,7 +154,7 @@ test('shows the IMDb rating for a hovered poster', async () => {
   const page = await context.newPage();
   await page.goto(PAGE_URL);
   await page.locator('#poster-unfassbaren').hover();
-  const card = page.locator('worth-it-card');
+  const card = page.locator('popscore-card');
   await expect(card).toHaveAttribute('data-state', 'match', { timeout: 10_000 });
   await page.screenshot({ path: 'test-results/card.png' });
 });
@@ -149,7 +170,7 @@ test('falls back to the TMDB score for a new release OMDb has no rating for yet'
   const page = await context.newPage();
   await page.goto(PAGE_URL);
   await page.locator('#poster-digger').hover();
-  await expect(page.locator('worth-it-card')).toHaveAttribute('data-state', 'match', {
+  await expect(page.locator('popscore-card')).toHaveAttribute('data-state', 'match', {
     timeout: 10_000,
   });
   await page.screenshot({ path: 'test-results/card-digger.png' });
@@ -166,7 +187,7 @@ test('links to Letterboxd when chosen in the settings', async () => {
   const page = await context.newPage();
   await page.goto(PAGE_URL);
   await page.locator('#poster-unfassbaren').hover();
-  await expect(page.locator('worth-it-card')).toHaveAttribute('data-state', 'match', {
+  await expect(page.locator('popscore-card')).toHaveAttribute('data-state', 'match', {
     timeout: 10_000,
   });
   await page.screenshot({ path: 'test-results/card-letterboxd.png' });
@@ -186,7 +207,7 @@ test('dwelling on a TV show never shows a card, not even a loading one', async (
     new MutationObserver((mutations) => {
       for (const m of mutations) {
         const el = m.target as HTMLElement;
-        if (el.tagName === 'WORTH-IT-CARD' && el.dataset.state) states.push(el.dataset.state);
+        if (el.tagName === 'POPSCORE-CARD' && el.dataset.state) states.push(el.dataset.state);
       }
     }).observe(document.documentElement, {
       subtree: true,
@@ -208,8 +229,8 @@ test('tags every film with its score, on the poster or after the title', async (
 
   const page = await context.newPage();
   await page.goto(PAGE_URL);
-  const tag = (id: number) => page.locator(`worth-it-tag[data-tmdb="${id}"]`);
-  await expect(page.locator('worth-it-tag')).toHaveCount(4, { timeout: 10_000 });
+  const tag = (id: number) => page.locator(`popscore-tag[data-tmdb="${id}"]`);
+  await expect(page.locator('popscore-tag')).toHaveCount(4, { timeout: 10_000 });
 
   await expect(tag(693134)).toHaveAttribute('data-verdict', 'good');
   await expect(tag(693134)).toHaveAttribute('data-score', '8.5');
@@ -225,15 +246,15 @@ test('tags every film with its score, on the poster or after the title', async (
   expect(Math.abs(box.y - (poster.y + 6))).toBeLessThan(2);
 
   // A text link gets it after its title; the TV show and other links get none.
-  await expect(page.locator('#link-oppenheimer worth-it-tag')).toHaveAttribute('data-score', '8.3');
-  await expect(page.locator('#link-kontakt worth-it-tag, li.show worth-it-tag')).toHaveCount(0);
+  await expect(page.locator('#link-oppenheimer popscore-tag')).toHaveAttribute('data-score', '8.3');
+  await expect(page.locator('#link-kontakt popscore-tag, li.show popscore-tag')).toHaveCount(0);
   // The tag's text stays in its shadow root: the hover detector reads the link as before.
   expect(await page.locator('#link-oppenheimer').innerText()).toBe('Oppenheimer');
   await page.screenshot({ path: 'test-results/tags.png' });
 
   // The hover card still opens through the tag.
   await page.locator('#poster-dune').hover({ position: { x: 12, y: 12 } });
-  await expect(page.locator('worth-it-card')).toHaveAttribute('data-state', 'match', {
+  await expect(page.locator('popscore-card')).toHaveAttribute('data-state', 'match', {
     timeout: 5000,
   });
 });
@@ -245,5 +266,5 @@ test('no tags when they are switched off', async () => {
   const page = await context.newPage();
   await page.goto(PAGE_URL);
   await page.waitForTimeout(2000);
-  await expect(page.locator('worth-it-tag')).toHaveCount(0);
+  await expect(page.locator('popscore-tag')).toHaveCount(0);
 });

@@ -7,6 +7,7 @@ import { fetchPosterDataUrl, lookup, pickMovie } from '@/src/lookup';
 import { normalizeTitle } from '@/src/match/normalize';
 import type { Message, Responses } from '@/src/messages';
 import { syncContentScripts } from '@/src/registration';
+import { keepSeriesListFresh } from '@/src/series';
 import {
   completePendingSite,
   getUsage,
@@ -19,8 +20,11 @@ import { displayScore } from '@/src/ui/format';
 async function handle(msg: Message): Promise<Responses[Message['type']]> {
   switch (msg.type) {
     case 'lookup':
+      // Auto mode skips TV series it finds in the weekly list.
+      if (msg.req.mode === 'auto') keepSeriesListFresh();
       return lookup(msg.req);
     case 'tag': {
+      keepSeriesListFresh();
       const result = await lookup(msg.req, { skipPoster: true, omdbBudget: TAG_OMDB_BUDGET });
       if (result.status === 'error') throw new Error(result.error);
       if (result.status !== 'match') return null;

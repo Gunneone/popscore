@@ -1,4 +1,4 @@
-import type { MovieDetails, MovieSummary } from '../types';
+import type { MovieDetails, MovieSummary, SeriesSummary } from '../types';
 import { ApiError } from './errors';
 
 const API = 'https://api.themoviedb.org/3';
@@ -16,6 +16,12 @@ interface TmdbSearchResult {
 }
 
 const TV_MOVIE_GENRE = 10770;
+
+interface TmdbTvSearchResult {
+  name: string;
+  original_name: string;
+  popularity?: number;
+}
 
 interface TmdbMovie {
   id: number;
@@ -86,6 +92,23 @@ export async function searchMovies(
     popularity: r.popularity ?? 0,
     voteCount: r.vote_count ?? 0,
     tvMovie: r.genre_ids?.includes(TV_MOVIE_GENRE) ?? false,
+  }));
+}
+
+export async function searchSeries(
+  query: string,
+  opts: { language?: string },
+  key: string,
+): Promise<SeriesSummary[]> {
+  const data = await tmdbGet<{ results: TmdbTvSearchResult[] }>(
+    '/search/tv',
+    { query, language: opts.language, include_adult: 'false' },
+    key,
+  );
+  return data.results.slice(0, 10).map((r) => ({
+    name: r.name,
+    originalName: r.original_name,
+    popularity: r.popularity ?? 0,
   }));
 }
 
