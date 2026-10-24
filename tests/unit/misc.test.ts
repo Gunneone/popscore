@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { cacheGet, cacheSet, clearCache, pruneCache } from '../src/cache';
+import { cacheGet, cacheSet, clearCache, pruneCache } from '../../src/cache';
 import {
   DEFAULT_SITES,
   findDefaultSite,
@@ -8,10 +8,16 @@ import {
   originPattern,
   REGION_NAMES,
   siteState,
-} from '../src/sites';
-import { mediaKinds } from '../src/settings';
-import { displayScore, formatRuntime, formatVotes, formatYears, verdict } from '../src/ui/format';
-import { placeCard } from '../src/ui/position';
+} from '../../src/sites';
+import { mediaKinds } from '../../src/settings';
+import {
+  displayScore,
+  formatRuntime,
+  formatVotes,
+  formatYears,
+  verdict,
+} from '../../src/ui/format';
+import { placeCard } from '../../src/ui/position';
 
 describe('sites', () => {
   it('matches default sites including subdomains and Prime Video paths', () => {

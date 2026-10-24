@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../src/api/errors';
-import { makeProvider, type RatingsProvider } from '../src/api/provider';
-import { serverProvider } from '../src/api/server';
+import { ApiError } from '../../src/api/errors';
+import { makeProvider, type RatingsProvider } from '../../src/api/provider';
+import { serverProvider } from '../../src/api/server';
 
 afterEach(() => vi.unstubAllGlobals());
 

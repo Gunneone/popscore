@@ -1,16 +1,16 @@
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
-import { CONTENT_SCRIPT_FILE } from '@/src/registration';
+import { CONTENT_SCRIPT_FILE } from '@/registration';
 import {
   completePendingSite,
   getSettings,
   pendingSiteItem,
   updateSettings,
   type Settings,
-} from '@/src/settings';
-import { originPattern, siteState, type SiteList } from '@/src/sites';
-import '@/src/ui/pages.css';
+} from '@/settings';
+import { originPattern, siteState, type SiteList } from '@/sites';
+import '@/ui/pages.css';
 import './style.css';
 
 const LIST_NAMES: Record<SiteList, string> = {

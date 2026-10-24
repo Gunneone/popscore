@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanSegments, cleanTitle } from '../src/detect/clean';
+import { cleanSegments, cleanTitle } from '../../src/detect/clean';
 
 describe('cleanTitle', () => {
   it.each([

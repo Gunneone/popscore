@@ -15,8 +15,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "wxt build && playwright test",
-    "e2e:sites": "wxt build && playwright test -c playwright.sites.config.ts; node scripts/sites-report.mjs",
+    "e2e": "wxt build && playwright test --project=smoke",
+    "e2e:sites": "wxt build && playwright test --project=sites; node scripts/sites-report.mjs",
     "lint:firefox": "wxt build -b firefox && web-ext lint --source-dir dist/firefox",
     "postinstall": "wxt prepare",
     "probe": "node scripts/build-probe.mjs",
@@ -43,5 +43,9 @@
   },
   "dependencies": {
     "preact": "^10.29.8"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "printWidth": 100
   }
 }

@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, type AppOptions } from '../server/app';
-import { openStore, type Store } from '../server/store';
-import { DAY, HOUR } from '../server/ttl';
+import { createApp, type AppOptions } from '../../server/app';
+import { openStore, type Store } from '../../server/store';
+import { DAY, HOUR } from '../../server/ttl';
 
 /** OMDb's answers by IMDb id; any other id has a rating on 5,000 votes. */
 const OMDB: Record<string, [rating: string, votes: string]> = {

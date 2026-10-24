@@ -1,4 +1,4 @@
-// Summarizes test-results/sites/*.json (written by e2e/live/sites.spec.ts) into
+// Summarizes test-results/sites/*.json (written by tests/e2e/live/sites.spec.ts) into
 // test-results/sites-report.md and prints the totals.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';

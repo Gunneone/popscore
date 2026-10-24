@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { extractCandidates, inPageChrome, titleFromUrl } from '../src/detect/extract';
-import { readStructured } from '../src/detect/structured';
+import { extractCandidates, inPageChrome, titleFromUrl } from '../../src/detect/extract';
+import { readStructured } from '../../src/detect/structured';
 
 function setBody(html: string) {
   document.body.innerHTML = html;

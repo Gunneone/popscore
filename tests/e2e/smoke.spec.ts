@@ -1,16 +1,16 @@
 import { chromium, expect, test, type BrowserContext } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_SERVER_URL } from '../src/sites';
+import { DEFAULT_SERVER_URL } from '../../src/sites';
 
 // Loads the built Chrome extension and hovers posters on a fake cinema page served under a real
 // cinema domain, so the manifest's content script runs. Build first: `npm run build`.
 const EXTENSION = path.resolve('dist/chrome');
-const FIXTURE = readFileSync(path.resolve('e2e/fixtures/cinema.html'), 'utf8');
+const FIXTURE = readFileSync(path.resolve('tests/e2e/fixtures/cinema.html'), 'utf8');
 const PAGE_URL = 'https://www.cinestar.de/popscore-e2e';
 // The same page on a streaming site, where TV shows are looked up too.
 const STREAMING_URL = 'https://www.joyn.de/popscore-e2e';
-const RANKED = readFileSync(path.resolve('e2e/fixtures/ranked.html'), 'utf8');
+const RANKED = readFileSync(path.resolve('tests/e2e/fixtures/ranked.html'), 'utf8');
 const RANKED_URL = 'https://www.cinestar.de/popscore-ranked';
 /** The ratings server the build asks without own keys (`npm run e2e` builds with the same .env). */
 const SERVER_ORIGIN = new URL(process.env.WXT_SERVER_URL || DEFAULT_SERVER_URL).origin;

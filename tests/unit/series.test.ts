@@ -1,8 +1,8 @@
 import { gzipSync } from 'node:zlib';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { clearCache, DAY } from '../src/cache';
-import { normalizeTitle } from '../src/match/normalize';
+import { clearCache, DAY } from '../../src/cache';
+import { normalizeTitle } from '../../src/match/normalize';
 import {
   listedSeries,
   parseSeriesExport,
@@ -11,7 +11,7 @@ import {
   seriesExportUrl,
   updateSeriesList,
   type SeriesList,
-} from '../src/series';
+} from '../../src/series';
 
 // Lines as in tv_series_ids_10_23_2026.json.gz.
 const EXPORT = [

@@ -1,5 +1,2 @@
-dist
-.wxt
-node_modules
-tests/fixtures
+tests/e2e/fixtures
 package-lock.json

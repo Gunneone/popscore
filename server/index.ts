@@ -55,7 +55,7 @@ const server = createServer((req, res) => {
     });
 });
 
-// Often, so client addresses leave memory within minutes (see PRIVACY.md).
+// Often, so client addresses leave memory within minutes (see docs/PRIVACY.md).
 const housekeeping = setInterval(() => app.sweep(), 60_000);
 housekeeping.unref();
 

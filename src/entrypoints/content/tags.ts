@@ -1,9 +1,9 @@
-import { extractCandidates } from '@/src/detect/extract';
-import { findSeeds, isSvgFile, tagPlacement } from '@/src/detect/scan';
-import type { StructuredInfo } from '@/src/detect/structured';
-import { send } from '@/src/messages';
-import { titleKey, type TagScore } from '@/src/types';
-import { ScoreTag, TAG_ELEMENT } from '@/src/ui/tag';
+import { extractCandidates } from '@/detect/extract';
+import { findSeeds, isSvgFile, tagPlacement } from '@/detect/scan';
+import type { StructuredInfo } from '@/detect/structured';
+import { send } from '@/messages';
+import { titleKey, type TagScore } from '@/types';
+import { ScoreTag, TAG_ELEMENT } from '@/ui/tag';
 
 interface Options {
   getStructured(): StructuredInfo;

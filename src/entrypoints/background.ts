@@ -1,14 +1,14 @@
 import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
-import { testOmdbKey } from '@/src/api/omdb';
-import { testTmdbKey } from '@/src/api/tmdb';
-import { clearCache } from '@/src/cache';
-import { fetchPosterDataUrl, lookup, pickMovie } from '@/src/lookup';
-import { normalizeTitle } from '@/src/match/normalize';
-import type { Message, Responses } from '@/src/messages';
-import type { LookupRequest } from '@/src/types';
-import { syncContentScripts } from '@/src/registration';
-import { keepSeriesListFresh } from '@/src/series';
+import { testOmdbKey } from '@/api/omdb';
+import { testTmdbKey } from '@/api/tmdb';
+import { clearCache } from '@/cache';
+import { fetchPosterDataUrl, lookup, pickMovie } from '@/lookup';
+import { normalizeTitle } from '@/match/normalize';
+import type { Message, Responses } from '@/messages';
+import type { LookupRequest } from '@/types';
+import { syncContentScripts } from '@/registration';
+import { keepSeriesListFresh } from '@/series';
 import {
   completePendingSite,
   getSettings,
@@ -16,8 +16,8 @@ import {
   savePick,
   TAG_OMDB_BUDGET,
   watchSettings,
-} from '@/src/settings';
-import { displayScore } from '@/src/ui/format';
+} from '@/settings';
+import { displayScore } from '@/ui/format';
 
 /**
  * The weekly series list is only read by auto lookups that search films without TV shows: with

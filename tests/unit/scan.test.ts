@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { findSeeds, isSvgFile, tagPlacement } from '../src/detect/scan';
+import { findSeeds, isSvgFile, tagPlacement } from '../../src/detect/scan';
 
 const q = (sel: string) => document.querySelector(sel)!;
 

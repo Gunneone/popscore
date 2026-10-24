@@ -7,7 +7,7 @@ import {
 } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { DEFAULT_SITES, type SiteDef } from '../../src/sites';
+import { DEFAULT_SITES, type SiteDef } from '../../../src/sites';
 
 // Visits every built-in site, hovers film links (should open a card for that film) and page chrome
 // such as menus, footers, buttons and headings (should open nothing), and writes what happened to

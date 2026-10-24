@@ -1,14 +1,14 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
-import { extractCandidates, inPageChrome } from '@/src/detect/extract';
-import { readStructured, type StructuredInfo } from '@/src/detect/structured';
-import { send } from '@/src/messages';
-import { getSettings, mediaKinds, watchSettings, type Settings } from '@/src/settings';
-import { DEFAULT_SITE_MATCHES, findDefaultSite, siteState } from '@/src/sites';
-import type { LookupResult, MovieSummary } from '@/src/types';
-import { Card, type CardState } from '@/src/ui/Card';
-import { CardHost } from '@/src/ui/host';
-import { pointerRect, type Rect } from '@/src/ui/position';
+import { extractCandidates, inPageChrome } from '@/detect/extract';
+import { readStructured, type StructuredInfo } from '@/detect/structured';
+import { send } from '@/messages';
+import { getSettings, mediaKinds, watchSettings, type Settings } from '@/settings';
+import { DEFAULT_SITE_MATCHES, findDefaultSite, siteState } from '@/sites';
+import type { LookupResult, MovieSummary } from '@/types';
+import { Card, type CardState } from '@/ui/Card';
+import { CardHost } from '@/ui/host';
+import { pointerRect, type Rect } from '@/ui/position';
 import { startScoreTags, type ScoreTags } from './tags';
 
 export default defineContentScript({

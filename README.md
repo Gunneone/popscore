@@ -62,7 +62,7 @@ Score tags use the same detector: every image outside menus and footers, plus li
 show's page in tiles without an image, is treated as if you pointed at it once it scrolls into view, and
 gets a tag when that finds a confident match. The tag goes into the page next to the poster (or at
 the end of the title), so it scrolls, slides and gets clipped along with it. See
-`src/detect/scan.ts` and `entrypoints/content/tags.ts`.
+`src/detect/scan.ts` and `src/entrypoints/content/tags.ts`.
 
 To see what it would detect on any site, without API keys, run `npm run probe`, paste
 `dist/probe/probe.js` into the DevTools console and call `popscoreProbe.watch()`.
@@ -152,26 +152,30 @@ Load it by hand: `npm run build`, then in Chrome open `chrome://extensions`, ena
 
 ### Layout
 
-| Path                                         | What                                                            |
-| -------------------------------------------- | --------------------------------------------------------------- |
-| `entrypoints/content/`                       | Hover/dwell/Alt trigger, mounts the card and the score tags     |
-| `entrypoints/background.ts`                  | Message router; all network calls happen here                   |
-| `entrypoints/options/`, `entrypoints/popup/` | Settings + welcome page, toolbar toggle                         |
-| `src/detect/`                                | Generic title extraction and cleaning                           |
-| `src/match/`                                 | Title normalization and result scoring                          |
-| `src/api/`                                   | TMDB, OMDb and ratings-server clients behind `RatingsProvider`  |
-| `src/lookup.ts`, `src/cache.ts`              | Search → details → rating with caching and "Wrong movie?" picks |
-| `src/series.ts`                              | Weekly list of popular TV series, so auto mode skips them       |
-| `src/ui/`                                    | Card and score tag, shadow-DOM host, positioning                |
-| `server/`                                    | Ratings server: TMDB/OMDb with the project's keys, shared cache |
+| Path                                                 | What                                                            |
+| ---------------------------------------------------- | --------------------------------------------------------------- |
+| `src/entrypoints/content/`                           | Hover/dwell/Alt trigger, mounts the card and the score tags     |
+| `src/entrypoints/background.ts`                      | Message router; all network calls happen here                   |
+| `src/entrypoints/options/`, `src/entrypoints/popup/` | Settings + welcome page, toolbar toggle                         |
+| `src/detect/`                                        | Generic title extraction and cleaning                           |
+| `src/match/`                                         | Title normalization and result scoring                          |
+| `src/api/`                                           | TMDB, OMDb and ratings-server clients behind `RatingsProvider`  |
+| `src/lookup.ts`, `src/cache.ts`                      | Search → details → rating with caching and "Wrong movie?" picks |
+| `src/series.ts`                                      | Weekly list of popular TV series, so auto mode skips them       |
+| `src/ui/`                                            | Card and score tag, shadow-DOM host, positioning                |
+| `public/icon/`                                       | Extension icons (`node scripts/make-icons.mjs`)                 |
+| `server/`                                            | Ratings server: TMDB/OMDb with the project's keys, shared cache |
+| `tests/unit/`, `tests/e2e/`                          | Vitest unit tests; Playwright smoke and live-site tests         |
+| `scripts/`                                           | Icon generator, debug probe, lookup diagnosis, sites report     |
+| `docs/`                                              | Privacy policy and store listing text                           |
 
 ## Publishing
 
 Before the first release with the server, deploy it, set `DEFAULT_SERVER_URL` in `src/sites.ts` to
 its address, and give it an OMDb key with a large enough daily allowance.
 
-See `store/listing.md` for listing text, permission justifications and the data disclosure, and
-`PRIVACY.md` for the privacy policy (host it publicly, e.g. via GitHub Pages, and link it in both
+See [docs/store-listing.md](docs/store-listing.md) for listing text, permission justifications and the data disclosure, and
+[docs/PRIVACY.md](docs/PRIVACY.md) for the privacy policy (host it publicly, e.g. via GitHub Pages, and link it in both
 stores). Run `npm run zip`, then upload `dist/popscore-chrome-<version>.zip` to the Chrome Web Store and
 `dist/popscore-firefox-<version>.zip` plus `dist/popscore-source-<version>.zip` to addons.mozilla.org.
 

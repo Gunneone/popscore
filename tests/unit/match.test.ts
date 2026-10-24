@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeTitle, titleSimilarity } from '../src/match/normalize';
-import { CONFIDENT_SIMILARITY, rankResults } from '../src/match/score';
-import type { MovieSummary } from '../src/types';
+import { normalizeTitle, titleSimilarity } from '../../src/match/normalize';
+import { CONFIDENT_SIMILARITY, rankResults } from '../../src/match/score';
+import type { MovieSummary } from '../../src/types';
 
 describe('normalizeTitle', () => {
   it.each([

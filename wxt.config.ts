@@ -6,6 +6,8 @@ import { apiHostPermissions, DEFAULT_SERVER_URL } from './src/sites';
 export default defineConfig({
   // MV3 everywhere: the extension relies on the scripting API and optional host permissions.
   manifestVersion: 3,
+  // Entrypoints live in src/entrypoints; `@/` resolves to src/. public/ stays at the root.
+  srcDir: 'src',
   // Same layout as Swedeline: dist/chrome, dist/firefox and the store zips next to them.
   // Dev builds (`npm run dev`) go to dist/chrome-dev so they never mix with release builds.
   outDir: 'dist',

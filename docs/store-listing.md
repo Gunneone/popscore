@@ -79,5 +79,5 @@ card when the user points at a title.
 
 - Screenshots 1280×800 (card on a cinema page, on Netflix, the settings page)
 - Small promo tile 440×280 (Chrome)
-- Hosted privacy policy URL (publish PRIVACY.md, e.g. via GitHub Pages)
+- Hosted privacy policy URL (publish docs/PRIVACY.md, e.g. via GitHub Pages from docs/)
 - The ratings server deployed, with its address as `DEFAULT_SERVER_URL` in `src/sites.ts`

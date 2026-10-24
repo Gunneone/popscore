@@ -1,7 +1,7 @@
 import { render } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
-import { send } from '@/src/messages';
+import { send } from '@/messages';
 import {
   getSettings,
   TAG_OMDB_BUDGET,
@@ -9,9 +9,9 @@ import {
   watchSettings,
   type LinkTarget,
   type Settings,
-} from '@/src/settings';
-import type { KeyTestResult, Usage } from '@/src/types';
-import '@/src/ui/pages.css';
+} from '@/settings';
+import type { KeyTestResult, Usage } from '@/types';
+import '@/ui/pages.css';
 import './style.css';
 import { SiteLists } from './SiteLists';
 import { VerdictSlider } from './VerdictSlider';

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { ApiError } from '../src/api/errors';
-import type { RatingsProvider } from '../src/api/provider';
-import { SERVER_URL } from '../src/api/server';
-import { clearCache } from '../src/cache';
-import { lookup, pickMovie, tmdbLanguage } from '../src/lookup';
-import { saveSeriesList } from '../src/series';
-import { getUsage, updateSettings } from '../src/settings';
-import type { LookupRequest, MediaKind, MovieDetails, MovieSummary } from '../src/types';
+import { ApiError } from '../../src/api/errors';
+import type { RatingsProvider } from '../../src/api/provider';
+import { SERVER_URL } from '../../src/api/server';
+import { clearCache } from '../../src/cache';
+import { lookup, pickMovie, tmdbLanguage } from '../../src/lookup';
+import { saveSeriesList } from '../../src/series';
+import { getUsage, updateSettings } from '../../src/settings';
+import type { LookupRequest, MediaKind, MovieDetails, MovieSummary } from '../../src/types';
 
 const summary = (
   tmdbId: number,

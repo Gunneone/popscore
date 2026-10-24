@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
-import { updateSettings, type Settings } from '@/src/settings';
-import { DEFAULT_SITES, REGION_NAMES, type Region, type SiteList } from '@/src/sites';
+import { updateSettings, type Settings } from '@/settings';
+import { DEFAULT_SITES, REGION_NAMES, type Region, type SiteList } from '@/sites';
 
 interface Entry {
   /** Site id, or the pattern of a site the user added. */
