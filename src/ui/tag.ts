@@ -4,7 +4,7 @@ import { verdict } from './format';
 import { applyStyles } from './host';
 import tagCss from './tag.css?inline';
 
-export const TAG_ELEMENT = 'worth-it-tag';
+export const TAG_ELEMENT = 'popscore-tag';
 
 /** Gap between the poster's corner and the tag. */
 const INSET = 6;
@@ -159,7 +159,7 @@ export class ScoreTag {
         seen = true;
         const over = stack
           .slice(0, at)
-          .some((el) => !el.contains(this.host) && !el.tagName.startsWith('WORTH-IT-'));
+          .some((el) => !el.contains(this.host) && !el.tagName.startsWith('POPSCORE-'));
         if (over) return true;
       }
       return seen ? false : undefined;

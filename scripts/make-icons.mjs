@@ -1,12 +1,10 @@
-// Draws the extension icon (white star on a blue rounded square) as PNGs, no image tools needed.
+// Draws the extension icon (a popcorn bucket on a midnight-blue rounded square) as PNGs, no image
+// tools needed.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
 const SIZES = [16, 32, 48, 96, 128];
-const BG_TOP = [46, 115, 236];
-const BG_BOTTOM = [26, 79, 184];
-const STAR = [255, 255, 255];
-const SAMPLES = 4;
+const SAMPLES = 8;
 
 function crc32(buf) {
   let c = ~0;
@@ -44,28 +42,80 @@ function png(size, rgba) {
   ]);
 }
 
-// Unit-square geometry (0..1).
-const RADIUS = 0.22;
-function inRoundedSquare(x, y) {
-  const dx = Math.max(RADIUS - x, 0, x - (1 - RADIUS));
-  const dy = Math.max(RADIUS - y, 0, y - (1 - RADIUS));
-  return dx * dx + dy * dy <= RADIUS * RADIUS;
+// The logo's shapes on its 128-unit grid, painted in order.
+const MIDNIGHT = [0x1f, 0x25, 0x47];
+const KERNEL = [0xff, 0xf8, 0xe7];
+const KERNEL_SHADE = [0xff, 0xf3, 0xd1];
+const BUCKET = [0xe2, 0x3d, 0x4b];
+const RIM = [0xc4, 0x2f, 0x3d];
+
+const circle = (cx, cy, r) => (x, y) => (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
+
+function roundedRect(left, top, width, height, r) {
+  return (x, y) => {
+    const dx = Math.max(left + r - x, 0, x - (left + width - r));
+    const dy = Math.max(top + r - y, 0, y - (top + height - r));
+    return dx * dx + dy * dy <= r * r;
+  };
 }
 
-const star = [];
-for (let i = 0; i < 10; i++) {
-  const r = i % 2 === 0 ? 0.36 : 0.15;
-  const a = -Math.PI / 2 + (i * Math.PI) / 5;
-  star.push([0.5 + r * Math.cos(a), 0.53 + r * Math.sin(a)]);
+function polygon(points) {
+  return (x, y) => {
+    let inside = false;
+    for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+      const [xi, yi] = points[i];
+      const [xj, yj] = points[j];
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  };
 }
-function inStar(x, y) {
-  let inside = false;
-  for (let i = 0, j = star.length - 1; i < star.length; j = i++) {
-    const [xi, yi] = star[i];
-    const [xj, yj] = star[j];
-    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
-  }
-  return inside;
+
+const TILE = roundedRect(0, 0, 128, 128, 28);
+const LAYERS = [
+  [MIDNIGHT, TILE],
+  [KERNEL, circle(42, 50, 15)],
+  [KERNEL, circle(64, 38, 18)],
+  [KERNEL, circle(86, 50, 15)],
+  [KERNEL_SHADE, circle(53, 56, 13)],
+  [KERNEL_SHADE, circle(75, 56, 13)],
+  [
+    BUCKET,
+    polygon([
+      [30, 62],
+      [98, 62],
+      [89, 112],
+      [39, 112],
+    ]),
+  ],
+  // White stripes, following the bucket's taper.
+  [
+    KERNEL,
+    polygon([
+      [43.6, 62],
+      [57.2, 62],
+      [59, 112],
+      [49, 112],
+    ]),
+  ],
+  [
+    KERNEL,
+    polygon([
+      [70.8, 62],
+      [84.4, 62],
+      [79, 112],
+      [69, 112],
+    ]),
+  ],
+  [RIM, roundedRect(26, 58, 76, 9, 4.5)],
+];
+
+/** The color at (x, y) on the 128-unit grid, or null outside the tile. */
+function colorAt(x, y) {
+  if (!TILE(x, y)) return null;
+  let color = null;
+  for (const [c, inside] of LAYERS) if (inside(x, y)) color = c;
+  return color;
 }
 
 mkdirSync('public/icon', { recursive: true });
@@ -79,10 +129,11 @@ for (const size of SIZES) {
         a = 0;
       for (let sy = 0; sy < SAMPLES; sy++) {
         for (let sx = 0; sx < SAMPLES; sx++) {
-          const x = (px + (sx + 0.5) / SAMPLES) / size;
-          const y = (py + (sy + 0.5) / SAMPLES) / size;
-          if (!inRoundedSquare(x, y)) continue;
-          const c = inStar(x, y) ? STAR : BG_TOP.map((t, i) => t + (BG_BOTTOM[i] - t) * y);
+          const c = colorAt(
+            ((px + (sx + 0.5) / SAMPLES) / size) * 128,
+            ((py + (sy + 0.5) / SAMPLES) / size) * 128,
+          );
+          if (!c) continue;
           r += c[0];
           g += c[1];
           b += c[2];

@@ -1,4 +1,4 @@
-// Debug helper: exposes the title detector on `window.worthItProbe` so it can be tried on any site
+// Debug helper: exposes the title detector on `window.popscoreProbe` so it can be tried on any site
 // from the DevTools console, without API keys. Built by `npm run probe`.
 import { extractCandidates, inPageChrome } from '../src/detect/extract';
 import { readStructured } from '../src/detect/structured';
@@ -16,10 +16,10 @@ function watch() {
   document.addEventListener('pointerover', (e) => {
     const top = scan(e.target as Element)[0];
     const text = top ? `${top.text}${top.year ? ` (${top.year})` : ''} ← ${top.source}` : '—';
-    if (text !== last) console.log('[Worth It?]', (last = text));
+    if (text !== last) console.log('[Popscore]', (last = text));
   });
 }
 
 Object.assign(window, {
-  worthItProbe: { scan, watch, extractCandidates, readStructured, inPageChrome },
+  popscoreProbe: { scan, watch, extractCandidates, readStructured, inPageChrome },
 });

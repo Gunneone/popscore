@@ -84,7 +84,7 @@ function Popup() {
   return (
     <main class="popup">
       <header>
-        <h1>Worth It?</h1>
+        <h1>Popscore</h1>
         <span class={`status small ${ready ? 'ok' : 'warn'}`}>
           {ready ? 'Ready' : 'Setup needed'}
         </span>
