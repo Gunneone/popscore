@@ -82,6 +82,21 @@ function numbersIn(title: string): string {
     .join(',');
 }
 
+/**
+ * The normalized `long` is `short` plus a subtitle, and the raw title really breaks there
+ * ("Family Guy Presents: It's a Trap!" is no "Family Guy" plus a subtitle).
+ */
+function addsSubtitle(short: string, long: string, longRaw: string): boolean {
+  const head = digitsForNumbers(normalizeTitle(longRaw.split(/\s[-–—|]\s|:\s|\s\(/)[0]));
+  return long.startsWith(short + ' ') && head === short;
+}
+
+/** `title` is `query` plus a subtitle: "Stranger Things: Fireplace" for "Stranger Things". */
+export function extendsTitle(query: string, title: string): boolean {
+  const x = digitsForNumbers(normalizeTitle(query));
+  return !!x && addsSubtitle(x, digitsForNumbers(normalizeTitle(title)), title);
+}
+
 /** How alike two titles are, 0..1. Tolerates punctuation, spacing, accents and a missing subtitle. */
 export function titleSimilarity(a: string, b: string): number {
   const x = digitsForNumbers(normalizeTitle(a));
@@ -95,11 +110,9 @@ export function titleSimilarity(a: string, b: string): number {
   if (cx === cy && !differentNumbers) return 0.98;
   let sim = diceCoefficient(cx, cy);
   // One title is the other plus a subtitle ("Die Unfassbaren" vs "Die Unfassbaren - Now You See Me").
-  // Usually the same film, but an exact title match elsewhere in the results still ranks higher.
-  // The longer one has to break there ("Family Guy Presents: It's a Trap!" is no "Family Guy").
+  // Usually the same film; rankResults doubts it when the shorter title names other results too.
   const [short, long, longRaw] = x.length <= y.length ? [x, y, b] : [y, x, a];
-  const head = digitsForNumbers(normalizeTitle(longRaw.split(/\s[-–—|]\s|:\s|\s\(/)[0]));
-  if (long.startsWith(short + ' ') && head === short)
+  if (addsSubtitle(short, long, longRaw))
     sim = Math.max(sim, 0.8 + 0.2 * (short.length / long.length));
   return differentNumbers ? Math.min(sim, 0.7) : sim;
 }
