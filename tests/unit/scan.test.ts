@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { findSeeds, isSvgFile, tagPlacement } from '../../src/detect/scan';
+import { findSeeds, isBlurred, isSvgFile, tagPlacement } from '../../src/detect/scan';
 
 const q = (sel: string) => document.querySelector(sel)!;
 
@@ -67,6 +67,24 @@ describe('isSvgFile', () => {
       false,
     );
     expect(isSvgFile(document.createElement('img'))).toBe(false);
+  });
+});
+
+describe('isBlurred', () => {
+  it('tells a blurred backdrop copy from the poster', () => {
+    // schauburg-kino.com draws a scaled-up, blurred copy of every poster behind it:
+    document.body.innerHTML = `
+      <style>.movie-poster .blurred-img { filter: blur(0.5rem); transform: scale(1.2); }</style>
+      <div class="movie-poster">
+        <div><img id="poster" src="1.jpg" alt="Vaterland"></div>
+        <img id="backdrop" class="blurred-img" src="1.jpg" alt="Vaterland">
+        <img id="faded" style="filter: grayscale(1) blur(4px)" src="2.jpg" alt="Rocky">
+        <img id="tinted" style="filter: brightness(0.8)" src="3.jpg" alt="Alte Liebe">
+      </div>`;
+    expect(isBlurred(q('#poster'))).toBe(false);
+    expect(isBlurred(q('#backdrop'))).toBe(true);
+    expect(isBlurred(q('#faded'))).toBe(true);
+    expect(isBlurred(q('#tinted'))).toBe(false);
   });
 });
 

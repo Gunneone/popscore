@@ -72,6 +72,14 @@ export function isSvgFile(img: Element): boolean {
   }
 }
 
+/**
+ * A blurred image is a backdrop, never the poster to tag: often a scaled-up copy of the poster
+ * behind it (schauburg-kino.com), where a tag in its corner would be clipped away.
+ */
+export function isBlurred(img: Element): boolean {
+  return /blur\(/.test(getComputedStyle(img).filter);
+}
+
 /** Where a seed's tag goes: on the poster, or after the title of a text-only link. */
 export function tagPlacement(seed: Element): TagPlacement {
   if (seed.tagName === 'IMG') return { kind: 'poster', img: seed };

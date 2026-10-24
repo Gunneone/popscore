@@ -1,5 +1,5 @@
 import { extractCandidates } from '@/detect/extract';
-import { findSeeds, isSvgFile, tagPlacement } from '@/detect/scan';
+import { findSeeds, isBlurred, isSvgFile, tagPlacement } from '@/detect/scan';
 import type { StructuredInfo } from '@/detect/structured';
 import { send } from '@/messages';
 import { titleKey, type TagScore } from '@/types';
@@ -158,7 +158,8 @@ export function startScoreTags(opts: Options): ScoreTags {
         if (!e.isIntersecting || handled.has(seed)) continue;
         if (seed.tagName === 'IMG') {
           const r = e.boundingClientRect;
-          if (r.width < MIN_POSTER_PX || r.height < MIN_POSTER_PX || isSvgFile(seed)) continue;
+          if (r.width < MIN_POSTER_PX || r.height < MIN_POSTER_PX) continue;
+          if (isSvgFile(seed) || isBlurred(seed)) continue;
           // Hidden images (shown on hover, preloaded) would put a tag over nothing.
           const visible =
             typeof seed.checkVisibility !== 'function' ||
