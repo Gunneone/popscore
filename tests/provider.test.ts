@@ -38,7 +38,7 @@ describe('makeProvider', () => {
     const server = fakeServer();
     const hosts = stubDirectApis();
     const p = makeProvider({ tmdbKey: ' ', omdbKey: '' }, server);
-    await p.search('Dune', { language: 'en-US' });
+    await p.search('Dune', { kind: 'movie', language: 'en-US' });
     await p.rating('tt1160419', { tag: true });
     expect(server.search).toHaveBeenCalledOnce();
     expect(server.rating).toHaveBeenCalledWith('tt1160419', { tag: true });
@@ -50,7 +50,7 @@ describe('makeProvider', () => {
     const server = fakeServer();
     const hosts = stubDirectApis();
     const p = makeProvider({ tmdbKey: 'k', omdbKey: '' }, server);
-    await p.search('Dune', { language: 'en-US' });
+    await p.search('Dune', { kind: 'movie', language: 'en-US' });
     await p.rating('tt1160419');
     expect(hosts).toEqual(['api.themoviedb.org']);
     expect(server.search).not.toHaveBeenCalled();
@@ -62,7 +62,7 @@ describe('makeProvider', () => {
     const server = fakeServer();
     const hosts = stubDirectApis();
     const p = makeProvider({ tmdbKey: '', omdbKey: 'o' }, server);
-    await p.search('Dune', { language: 'en-US' });
+    await p.search('Dune', { kind: 'movie', language: 'en-US' });
     expect(await p.rating('tt1160419')).toEqual({ rating: 8, votes: 1000 });
     expect(hosts).toEqual(['www.omdbapi.com']);
     expect(server.search).toHaveBeenCalledOnce();
@@ -70,11 +70,33 @@ describe('makeProvider', () => {
     expect(p.ownOmdbKey).toBe(true);
   });
 
+  it("searches TMDB's TV shows with an own TMDB key, and the server's without", async () => {
+    const paths: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: URL | string) => {
+        paths.push(new URL(String(url)).pathname);
+        return Response.json({ results: [] });
+      }),
+    );
+    await makeProvider({ tmdbKey: 'k', omdbKey: '' }, fakeServer()).search('Dark', {
+      kind: 'tv',
+      language: 'de-DE',
+    });
+    expect(paths).toEqual(['/3/search/tv']);
+    const server = fakeServer();
+    await makeProvider({ tmdbKey: '', omdbKey: '' }, server).search('Dark', {
+      kind: 'tv',
+      language: 'de-DE',
+    });
+    expect(server.search).toHaveBeenCalledWith('Dark', { kind: 'tv', language: 'de-DE' });
+  });
+
   it('never asks the server with both keys', async () => {
     const server = fakeServer();
     const hosts = stubDirectApis();
     const p = makeProvider({ tmdbKey: 'k', omdbKey: 'o' }, server);
-    await p.search('Dune', { language: 'en-US' });
+    await p.search('Dune', { kind: 'movie', language: 'en-US' });
     await p.rating('tt1160419');
     expect(hosts).toEqual(['api.themoviedb.org', 'www.omdbapi.com']);
     expect(server.search).not.toHaveBeenCalled();
@@ -99,9 +121,26 @@ describe('serverProvider', () => {
 
   it('asks the server and returns its answer', async () => {
     const urls = stubServer(() => Response.json([{ tmdbId: 1, title: 'Dune' }]));
-    const results = await serverProvider(BASE).search('Dune', { language: 'de-DE', year: 2021 });
+    const results = await serverProvider(BASE).search('Dune', {
+      kind: 'movie',
+      language: 'de-DE',
+      year: 2021,
+    });
     expect(results).toEqual([{ tmdbId: 1, title: 'Dune' }]);
-    expect(urls[0].href).toBe('https://ratings.test/v1/search?query=Dune&language=de-DE&year=2021');
+    expect(urls[0].href).toBe(
+      'https://ratings.test/v1/search?query=Dune&kind=movie&language=de-DE&year=2021',
+    );
+  });
+
+  it('asks the server for TV shows by kind', async () => {
+    const urls = stubServer(() => Response.json([]));
+    const p = serverProvider(BASE);
+    await p.search('Dark', { kind: 'tv', language: 'de-DE' });
+    await p.details(70523, 'tv').catch(() => undefined);
+    expect(urls.map((u) => u.pathname + u.search)).toEqual([
+      '/v1/search?query=Dark&kind=tv&language=de-DE',
+      '/v1/tv/70523',
+    ]);
   });
 
   it('marks score tag lookups', async () => {
@@ -121,7 +160,7 @@ describe('serverProvider', () => {
     [500, 'unknown'],
   ])('maps status %i to %s', async (status, code) => {
     stubServer(() => Response.json({ error: 'x' }, { status }));
-    await expect(serverProvider(BASE).details(1)).rejects.toEqual(
+    await expect(serverProvider(BASE).details(1, 'movie')).rejects.toEqual(
       expect.objectContaining({ code }),
     );
   });
@@ -135,8 +174,8 @@ describe('serverProvider', () => {
 
   it('reports an unreachable server as offline', async () => {
     stubServer(() => Promise.reject(new TypeError('Failed to fetch')));
-    await expect(serverProvider(BASE).search('Dune', { language: 'en-US' })).rejects.toEqual(
-      expect.objectContaining({ code: 'offline' }),
-    );
+    await expect(
+      serverProvider(BASE).search('Dune', { kind: 'movie', language: 'en-US' }),
+    ).rejects.toEqual(expect.objectContaining({ code: 'offline' }));
   });
 });

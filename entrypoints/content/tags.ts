@@ -2,7 +2,7 @@ import { extractCandidates } from '@/src/detect/extract';
 import { findSeeds, isSvgFile, tagPlacement } from '@/src/detect/scan';
 import type { StructuredInfo } from '@/src/detect/structured';
 import { send } from '@/src/messages';
-import type { TagScore } from '@/src/types';
+import { titleKey, type TagScore } from '@/src/types';
 import { ScoreTag, TAG_ELEMENT } from '@/src/ui/tag';
 
 interface Options {
@@ -33,7 +33,7 @@ const RETRY_MS = 30_000;
 
 function isOurs(node: Node): boolean {
   return (
-    node instanceof Element && (node.tagName === 'WORTH-IT-TAG' || node.tagName === 'WORTH-IT-CARD')
+    node instanceof Element && (node.tagName === 'POPSCORE-TAG' || node.tagName === 'POPSCORE-CARD')
   );
 }
 
@@ -97,8 +97,8 @@ export function startScoreTags(opts: Options): ScoreTags {
     return pending.catch(() => null);
   };
 
-  const nearbyTag = (seed: Element, tmdbId: number): [Element, ScoreTag] | undefined => {
-    const selector = `${TAG_ELEMENT}[data-tmdb="${tmdbId}"]`;
+  const nearbyTag = (seed: Element, score: TagScore): [Element, ScoreTag] | undefined => {
+    const selector = `${TAG_ELEMENT}[data-kind="${score.kind}"][data-tmdb="${score.tmdbId}"]`;
     let el = seed.parentElement;
     for (let depth = 0; el && depth < TILE_DEPTH; depth++, el = el.parentElement) {
       const host = el.querySelector(selector);
@@ -109,14 +109,14 @@ export function startScoreTags(opts: Options): ScoreTags {
 
   const place = (seed: Element, score: TagScore) => {
     const existing = tags.get(seed);
-    if (existing?.score.tmdbId === score.tmdbId) return;
+    if (existing && titleKey(existing.score) === titleKey(score)) return;
     if (existing) {
       existing.remove();
       tags.delete(seed);
     }
     // One tag per film per tile (poster and backdrop, poster and title link), on the poster.
     const placement = tagPlacement(seed);
-    const twin = nearbyTag(seed, score.tmdbId);
+    const twin = nearbyTag(seed, score);
     if (twin) {
       if (placement.kind !== 'poster' || twin[1].placement.kind !== 'title') return;
       twin[1].remove();

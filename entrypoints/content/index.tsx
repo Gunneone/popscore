@@ -3,7 +3,7 @@ import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { extractCandidates, inPageChrome } from '@/src/detect/extract';
 import { readStructured, type StructuredInfo } from '@/src/detect/structured';
 import { send } from '@/src/messages';
-import { getSettings, watchSettings, type Settings } from '@/src/settings';
+import { getSettings, mediaKinds, watchSettings, type Settings } from '@/src/settings';
 import { DEFAULT_SITE_MATCHES, findDefaultSite, siteState } from '@/src/sites';
 import type { LookupResult, MovieSummary } from '@/src/types';
 import { Card, type CardState } from '@/src/ui/Card';
@@ -35,7 +35,7 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
   ctx.onInvalidated(() => host.destroy());
 
   let structuredUrl = '';
-  let structured: StructuredInfo = { movies: [], hasScreenings: false };
+  let structured: StructuredInfo = { titles: [], hasScreenings: false };
   const getStructured = () => {
     if (structuredUrl !== location.href) {
       structured = readStructured(document);
@@ -69,14 +69,6 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
       tags = null;
     } else tags?.repaint();
   };
-  syncTags();
-  ctx.onInvalidated(
-    watchSettings((s) => {
-      settings = s;
-      syncTags();
-    }),
-  );
-  ctx.onInvalidated(() => tags?.stop());
 
   let pointer = { x: 0, y: 0 };
   let hovered: Element | null = null;
@@ -91,6 +83,22 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
     auto: new WeakMap(),
     manual: new WeakMap(),
   };
+
+  syncTags();
+  ctx.onInvalidated(
+    watchSettings((s) => {
+      // Switching movies or TV shows on or off changes every answer: start over.
+      if (mediaKinds(s).join() !== mediaKinds(settings).join()) {
+        memo.auto = new WeakMap();
+        memo.manual = new WeakMap();
+        tags?.stop();
+        tags = null;
+      }
+      settings = s;
+      syncTags();
+    }),
+  );
+  ctx.onInvalidated(() => tags?.stop());
 
   const anchorRect = (anchor: Element): Rect => {
     const r = anchor.getBoundingClientRect();
@@ -168,9 +176,13 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
     if (!active) return;
     seq++;
     show({ kind: 'loading' });
-    const pending = send({ type: 'pick', query, tmdbId: movie.tmdbId, alternatives: pool }).catch(
-      fallback,
-    );
+    const pending = send({
+      type: 'pick',
+      query,
+      kind: movie.kind,
+      tmdbId: movie.tmdbId,
+      alternatives: pool,
+    }).catch(fallback);
     remember(pending);
     void settle(pending, 'manual');
   }
@@ -231,7 +243,8 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
     }
 
     // A skeleton while we wait, only when asked (Alt-hover). On dwell the card appears once there's
-    // a match: TV shows, events and other non-films would otherwise flash an empty card.
+    // a match: events, switched-off TV shows and other non-titles would otherwise flash an empty
+    // card.
     clearTimeout(skeletonTimer);
     if (mode === 'manual') {
       const id = seq;

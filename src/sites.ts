@@ -216,17 +216,19 @@ export function siteState(url: string, s: SiteSettings): SiteState {
 }
 
 /**
- * The Worth It? ratings server (see server/), used for each service the user has no own key for.
+ * The Popscore ratings server (see server/), used for each service the user has no own key for.
  * Builds can point elsewhere with WXT_SERVER_URL. `.example` never resolves: set the real address
  * before a release.
  */
-export const DEFAULT_SERVER_URL = 'https://ratings.worth-it.example';
+export const DEFAULT_SERVER_URL = 'https://ratings.popscore.example';
 
 /** Hosts the background worker talks to. */
 export function apiHostPermissions(serverUrl: string): string[] {
   return [
     'https://api.themoviedb.org/*',
     'https://image.tmdb.org/*',
+    // The weekly TV series list (src/series.ts): sent without CORS headers, so it needs the host.
+    'https://files.tmdb.org/*',
     'https://www.omdbapi.com/*',
     originPattern(serverUrl) ?? originPattern(DEFAULT_SERVER_URL)!,
   ];

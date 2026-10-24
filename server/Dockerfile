@@ -1,6 +1,6 @@
 # The ratings server. Build from the repository root, since it shares code with the extension:
-#   docker build -f server/Dockerfile -t worth-it-server .
-#   docker run -p 8787:8787 -v worth-it-cache:/data -e TMDB_KEY=… -e OMDB_KEY=… worth-it-server
+#   docker build -f server/Dockerfile -t popscore-server .
+#   docker run -p 8787:8787 -v popscore-cache:/data -e TMDB_KEY=… -e OMDB_KEY=… popscore-server
 FROM node:24-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

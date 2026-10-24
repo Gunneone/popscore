@@ -1,6 +1,6 @@
 import { ApiError } from '../src/api/errors';
 import { fetchImdbRating } from '../src/api/omdb';
-import { movieDetails, searchMovies } from '../src/api/tmdb';
+import { movieDetails, searchMovies, searchTv, tvDetails } from '../src/api/tmdb';
 import { normalizeTitle } from '../src/match/normalize';
 import type { LookupError } from '../src/types';
 import { rateLimiter } from './limits';
@@ -97,24 +97,39 @@ export function createApp(opts: AppOptions): App {
       if (!normalized || query.length > MAX_QUERY) throw new BadRequest('query');
       const language = params.get('language') || 'en-US';
       if (!LANGUAGE.test(language)) throw new BadRequest('language');
+      const kind = params.get('kind') || 'movie';
+      if (kind !== 'movie' && kind !== 'tv') throw new BadRequest('kind');
       const yearText = params.get('year');
-      const year = yearText ? Number(yearText) : undefined;
+      let year = yearText ? Number(yearText) : undefined;
       if (year !== undefined && !(Number.isInteger(year) && year >= 1870 && year <= 2200)) {
         throw new BadRequest('year');
       }
+      // TV search takes no year (see searchTv).
+      if (kind === 'tv') year = undefined;
       return cached(
-        `s:${language}:${year ?? ''}:${normalized}`,
-        () => searchMovies(query, { language, year }, opts.tmdbKey),
+        `s:${kind}:${language}:${year ?? ''}:${normalized}`,
+        () =>
+          kind === 'tv'
+            ? searchTv(query, { language }, opts.tmdbKey)
+            : searchMovies(query, { language, year }, opts.tmdbKey),
         searchTtl,
       );
     }
 
-    const movie = /^\/v1\/movie\/([^/]+)$/.exec(url.pathname);
-    if (movie) {
-      if (!TMDB_ID.test(movie[1])) throw new BadRequest('tmdbId');
-      const tmdbId = Number(movie[1]);
+    const details = /^\/v1\/(movie|tv)\/([^/]+)$/.exec(url.pathname);
+    if (details) {
+      const [, kind, id] = details;
+      if (!TMDB_ID.test(id)) throw new BadRequest('tmdbId');
+      const tmdbId = Number(id);
       // The card UI is English, like the extension's own details lookups.
-      return cached(`d:${tmdbId}`, () => movieDetails(tmdbId, 'en-US', opts.tmdbKey), detailsTtl);
+      return cached(
+        `d:${kind}:${tmdbId}`,
+        () =>
+          kind === 'tv'
+            ? tvDetails(tmdbId, 'en-US', opts.tmdbKey)
+            : movieDetails(tmdbId, 'en-US', opts.tmdbKey),
+        detailsTtl,
+      );
     }
 
     const rating = /^\/v1\/rating\/([^/]+)$/.exec(url.pathname);

@@ -10,9 +10,13 @@ export function ratingTtl(r: ImdbRating): number {
   return r.rating === null || r.votes === null || r.votes < FEW_VOTES ? DAY : WEEK;
 }
 
-/** New films get their IMDb id and most of their TMDB votes in the first days, so check daily. */
+/**
+ * New films get their IMDb id and most of their TMDB votes in the first days, and running shows
+ * add seasons, so check those daily.
+ */
 export function detailsTtl(d: MovieDetails): number {
-  return !d.imdbId || d.tmdbVotes < FEW_VOTES ? DAY : WEEK;
+  const running = d.kind === 'tv' && !d.ended;
+  return !d.imdbId || d.tmdbVotes < FEW_VOTES || running ? DAY : WEEK;
 }
 
 /** A title that finds nothing may be a film TMDB adds tomorrow. */

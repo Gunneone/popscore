@@ -31,6 +31,34 @@ interface TmdbMovie {
   vote_count?: number;
 }
 
+interface TmdbTvSearchResult {
+  id: number;
+  name: string;
+  original_name: string;
+  first_air_date?: string;
+  poster_path?: string | null;
+  popularity?: number;
+  vote_count?: number;
+}
+
+interface TmdbTv {
+  id: number;
+  name: string;
+  original_name: string;
+  first_air_date?: string;
+  last_air_date?: string | null;
+  /** "Returning Series", "Ended", "Canceled", "In Production", … */
+  status?: string;
+  number_of_seasons?: number;
+  episode_run_time?: number[];
+  genres?: { id: number; name: string }[];
+  overview?: string;
+  poster_path?: string | null;
+  vote_average?: number;
+  vote_count?: number;
+  external_ids?: { imdb_id?: string | null };
+}
+
 /** v4 "API Read Access Tokens" are JWTs; v3 "API Keys" are 32 hex chars. */
 function isBearerToken(key: string): boolean {
   return key.startsWith('eyJ') && key.length > 60;
@@ -77,6 +105,7 @@ export async function searchMovies(
     key,
   );
   return data.results.slice(0, 10).map((r) => ({
+    kind: 'movie' as const,
     tmdbId: r.id,
     title: r.title,
     originalTitle: r.original_title,
@@ -96,6 +125,7 @@ export async function movieDetails(
 ): Promise<MovieDetails> {
   const m = await tmdbGet<TmdbMovie>(`/movie/${tmdbId}`, { language }, key);
   return {
+    kind: 'movie',
     tmdbId: m.id,
     title: m.title,
     originalTitle: m.original_title,
@@ -107,6 +137,60 @@ export async function movieDetails(
     imdbId: m.imdb_id || null,
     tmdbRating: m.vote_count ? (m.vote_average ?? null) : null,
     tmdbVotes: m.vote_count ?? 0,
+  };
+}
+
+/** No year filter: tiles often show the year of the latest season, not the first. */
+export async function searchTv(
+  query: string,
+  opts: { language?: string },
+  key: string,
+): Promise<MovieSummary[]> {
+  const data = await tmdbGet<{ results: TmdbTvSearchResult[] }>(
+    '/search/tv',
+    { query, language: opts.language, include_adult: 'false' },
+    key,
+  );
+  return data.results.slice(0, 10).map((r) => ({
+    kind: 'tv' as const,
+    tmdbId: r.id,
+    title: r.name,
+    originalTitle: r.original_name,
+    releaseDate: r.first_air_date || undefined,
+    year: yearOf(r.first_air_date),
+    posterPath: r.poster_path ?? null,
+    popularity: r.popularity ?? 0,
+    voteCount: r.vote_count ?? 0,
+  }));
+}
+
+export async function tvDetails(
+  tmdbId: number,
+  language: string,
+  key: string,
+): Promise<MovieDetails> {
+  // The IMDb id lives in external_ids; appending it saves a second request.
+  const t = await tmdbGet<TmdbTv>(
+    `/tv/${tmdbId}`,
+    { language, append_to_response: 'external_ids' },
+    key,
+  );
+  return {
+    kind: 'tv',
+    tmdbId: t.id,
+    title: t.name,
+    originalTitle: t.original_name,
+    year: yearOf(t.first_air_date),
+    runtime: t.episode_run_time?.[0] || null,
+    genres: (t.genres ?? []).map((g) => g.name),
+    overview: t.overview ?? '',
+    posterPath: t.poster_path ?? null,
+    imdbId: t.external_ids?.imdb_id || null,
+    tmdbRating: t.vote_count ? (t.vote_average ?? null) : null,
+    tmdbVotes: t.vote_count ?? 0,
+    seasons: t.number_of_seasons || undefined,
+    lastYear: yearOf(t.last_air_date ?? undefined),
+    ended: t.status === 'Ended' || t.status === 'Canceled',
   };
 }
 

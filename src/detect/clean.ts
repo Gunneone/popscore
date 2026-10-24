@@ -1,6 +1,8 @@
 export interface CleanTitle {
   title: string;
   year?: number;
+  /** The text named a season, an episode or a series ("Dark – Staffel 2"): it's a TV show. */
+  series?: boolean;
 }
 
 // Screening formats and event labels cinemas put around a film's title.
@@ -55,8 +57,15 @@ const ACTION_ONLY = new RegExp(`^(?:${ACTION}|${EVENT}|${FORMAT}|${CONTROL})$`, 
 
 const AGE_RATING =
   /\b(?:FSK|USK|PG|Rated)\s*-?\s*\d{1,2}\b|\bab\s+\d{1,2}(?:\s+Jahren)?\b|\b(?:FSK|ab)\s+0\b/gi;
-const SERIES =
-  /\b(?:Staffel|Season|Series|Serie)\s*\d+|\b(?:Folge|Episode|Ep\.)\s*\d+|\bS\d{1,2}\s*:?\s*E\d{1,3}\b|\b(?:TV[- ]Serie|Miniserie|Limited Series|Docuseries|Dokuserie)\b/i;
+// Seasons and episodes, which come after the show's title: "Dark Staffel 2", "The Crown: Season
+// 4, Episode 1", "S01:E04", "2. Staffel", "3 Seasons". Everything from here on is dropped.
+const SEASON_OR_EPISODE =
+  /\b(?:Staffel|Season|Series|Serie)\s*\d+|\b\d+\.\s*Staffel|\b\d+\s*(?:Staffeln|Seasons|Folgen|Episoden|Episodes)\b|\b(?:Folge|Episode|Ep\.)\s*\d+|\bS\d{1,2}\s*:?\s*E\d{1,3}\b/i;
+// Labels for what kind of show it is: "Dark (Miniserie)", "Chernobyl – Limited Series".
+const SERIES_TYPE =
+  /\b(?:TV[- ]Serie|TV[- ]Series|Fernsehserie|Miniserie|Mini-?series|Limited Series|Docuseries|Doku-?serie)\b/i;
+// A category label after the title: "Dark - Serien", "Fargo | TV Show".
+const SERIES_CATEGORY = /\s*[-–—|:,]\s*(?:Serien?|Series|TV[- ]Shows?)\s*$/i;
 // Accessibility text after the title, e.g. Disney+'s "Dune. Select for details on this title."
 const TRAILING_SENTENCE =
   /[.,]\s+(?:\p{Lu}[^.]*\b(?:select|details|press|click|tap|auswählen|wählen|drücken|klicken|tippen|öffnen|open)\b.*)$/iu;
@@ -153,9 +162,14 @@ function stripRepeatedly(s: string, ...patterns: RegExp[]): string {
   return s;
 }
 
+/** Text that marks a TV show: a season, an episode or a series label. */
+export function isSeriesText(s: string): boolean {
+  return SEASON_OR_EPISODE.test(s) || SERIES_TYPE.test(s) || SERIES_CATEGORY.test(s);
+}
+
 /**
- * Turns raw text from a page element into a searchable movie title, or null if it isn't one.
- * Returns null for series too: the extension rates movies only.
+ * Turns raw text from a page element into a searchable movie or show title, or null if it isn't
+ * one. Season and episode bits are cut off, and the result is flagged as a series.
  */
 export function cleanTitle(raw: string): CleanTitle | null {
   let s = decodeEntities(raw)
@@ -164,7 +178,12 @@ export function cleanTitle(raw: string): CleanTitle | null {
     .replace(/\s+/g, ' ')
     .trim();
   if (!s) return null;
-  if (SECRET_SCREENING.test(s) || SERIES.test(s)) return null;
+  if (SECRET_SCREENING.test(s)) return null;
+
+  const series = isSeriesText(s);
+  const marker = SEASON_OR_EPISODE.exec(s);
+  if (marker) s = s.slice(0, marker.index);
+  s = s.replace(SERIES_TYPE, ' ').replace(SERIES_CATEGORY, '');
 
   s = s.replace(TRAILING_SENTENCE, '');
 
@@ -209,7 +228,10 @@ export function cleanTitle(raw: string): CleanTitle | null {
   if (!/[\p{L}\p{N}]/u.test(s)) return null;
   if (ACTION_ONLY.test(s) || NOT_A_TITLE.test(s) || isScreeningLabel(s)) return null;
   if (s.split(' ').length > 12) return null;
-  return year === undefined ? { title: s } : { title: s, year };
+  const out: CleanTitle = { title: s };
+  if (year !== undefined) out.year = year;
+  if (series) out.series = true;
+  return out;
 }
 
 /** Text that holds several fields ("Dune: Part Two\nFSK 12 · 166 Min") -> its title-looking parts, best first. */

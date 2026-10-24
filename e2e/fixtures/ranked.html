@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Top 10 (test fixture)</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 40px;
+      }
+      /*
+       * Built like a streaming service's Top 10 shelf: the poster is a z-index 1 layer inside its
+       * tile, and a gradient and the rank numeral are z-index 2 layers drawn over it.
+       */
+      section {
+        position: relative;
+        z-index: 1;
+      }
+      .tile {
+        position: relative;
+        display: grid;
+        width: 160px;
+      }
+      .tile > * {
+        grid-area: 1 / 1;
+      }
+      .artwork {
+        z-index: 1;
+      }
+      .frame {
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+      }
+      img {
+        width: 160px;
+        height: 240px;
+        background: #ccc;
+        display: block;
+      }
+      .gradient {
+        z-index: 2;
+        background: linear-gradient(rgb(0 0 0 / 0.5), transparent);
+      }
+      .ordinal {
+        z-index: 2;
+        align-self: start;
+        justify-self: start;
+        margin-left: 12px;
+        font: 700 40px sans-serif;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <section>
+      <h2>Top 10: Filme</h2>
+      <div class="tile">
+        <div class="artwork">
+          <div class="frame">
+            <picture>
+              <img
+                id="poster-oppenheimer"
+                alt="Oppenheimer"
+                src="data:image/gif;base64,R0lGODlhAQABAAAAACw="
+              />
+            </picture>
+          </div>
+        </div>
+        <div class="gradient"></div>
+        <div class="ordinal">1</div>
+      </div>
+    </section>
+  </body>
+</html>

@@ -60,7 +60,7 @@ const housekeeping = setInterval(() => app.sweep(), 60_000);
 housekeeping.unref();
 
 server.listen(port, () => {
-  console.log(`Worth It? ratings server on port ${port} (cache: ${dbPath})`);
+  console.log(`Popscore ratings server on port ${port} (cache: ${dbPath})`);
 });
 
 function shutdown() {

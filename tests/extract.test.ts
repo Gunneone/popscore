@@ -145,6 +145,26 @@ describe('extractCandidates', () => {
     const [top] = extractCandidates(q('h1'), { structured });
     expect(top).toMatchObject({ text: 'Dune: Part Two', year: 2024, softYear: true });
   });
+
+  it('marks a show from a season label, a series link or structured data', () => {
+    setBody(`
+      <div class="tile" id="a"><a href="/watch/1"><img src="a.jpg" alt="Dark"><span>3 Staffeln</span></a></div>
+      <div class="tile" id="b"><a href="/serien/babylon-berlin"><img src="b.jpg" alt="Babylon Berlin"></a></div>
+      <div class="tile" id="c"><a href="/watch/3"><img src="c.jpg" alt="Barbie"></a></div>`);
+    expect(extractCandidates(q('#a img'))[0]).toMatchObject({ text: 'Dark', series: true });
+    expect(extractCandidates(q('#b img'))[0]).toMatchObject({
+      text: 'Babylon Berlin',
+      series: true,
+    });
+    expect(extractCandidates(q('#c img'))[0].series).toBeUndefined();
+
+    document.head.innerHTML = `<script type="application/ld+json">{"@type":"TVSeries","name":"Barbie","startDate":"2019-01-01"}</script>`;
+    const structured = readStructured(document);
+    expect(extractCandidates(q('#c img'), { structured })[0]).toMatchObject({
+      text: 'Barbie',
+      series: true,
+    });
+  });
 });
 
 describe('readStructured', () => {
@@ -154,11 +174,21 @@ describe('readStructured', () => {
       <script type="application/ld+json">not json</script>
       <meta property="og:type" content="video.movie"><meta property="og:title" content="Barbie">`;
     const info = readStructured(document);
-    expect(info.movies).toEqual([
+    expect(info.titles).toEqual([
       { title: 'Wicked', year: 2024 },
       { title: 'Barbie', year: undefined },
     ]);
     expect(info.hasScreenings).toBe(false);
+  });
+
+  it('reads TV series, but not their seasons or episodes', () => {
+    document.head.innerHTML = `
+      <script type="application/ld+json">{"@type":"TVEpisode","name":"Secrets","partOfSeason":{"@type":"TVSeason","name":"Season 1"},"partOfSeries":{"@type":"TVSeries","name":"Dark","startDate":"2017-12-01"}}</script>
+      <meta property="og:type" content="video.tv_show"><meta property="og:title" content="Babylon Berlin">`;
+    expect(readStructured(document).titles).toEqual([
+      { title: 'Dark', year: 2017, series: true },
+      { title: 'Babylon Berlin', year: undefined, series: true },
+    ]);
   });
 });
 
@@ -207,13 +237,28 @@ describe('titleFromUrl', () => {
     ['/filme/shaun-das-schaf-spuk-im-kuerbisfeld-2026', 'shaun das schaf spuk im kuerbisfeld'],
     ['https://www.cinemaxx.de/film/street-fighter_a1b2c3d4e5', 'street fighter'],
   ])('%j -> %j', (href, title) => {
-    expect(titleFromUrl(href, base)).toBe(title);
+    expect(titleFromUrl(href, base)).toEqual({ title, series: false });
   });
 
-  it.each(['/title/81234567', '/film?category=now', '/programm/heute', '/films/', '/'])(
-    'ignores %j',
-    (href) => {
-      expect(titleFromUrl(href, base)).toBeNull();
-    },
-  );
+  it.each([
+    ['/serien/babylon-berlin', 'babylon berlin'],
+    ['/de/serie/dark', 'dark'],
+    ['/series/the-bear/a1b2c3d4e5f6', 'the bear'],
+    ['/tv-shows/fargo', 'fargo'],
+  ])('%j -> %j, a series', (href, title) => {
+    expect(titleFromUrl(href, base)).toEqual({ title, series: true });
+  });
+
+  it.each([
+    '/title/81234567',
+    '/film?category=now',
+    '/programm/heute',
+    '/films/',
+    '/',
+    // Cinemas link screenings this way, broadcasters whole sections.
+    '/show/12345',
+    '/play/tv/sendungen',
+  ])('ignores %j', (href) => {
+    expect(titleFromUrl(href, base)).toBeNull();
+  });
 });

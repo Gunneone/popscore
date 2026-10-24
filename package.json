@@ -1,5 +1,5 @@
 {
-  "name": "worth-it",
+  "name": "popscore",
   "description": "See the IMDb rating of any movie by hovering its title on cinema and streaming sites.",
   "private": true,
   "version": "0.1.0",

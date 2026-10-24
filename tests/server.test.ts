@@ -19,6 +19,12 @@ const TMDB: Record<string, { imdb_id: string | null; vote_count: number }> = {
   777: { imdb_id: null, vote_count: 5000 },
 };
 
+/** TMDB's TV show details by id: Dark has ended, The Last of Us is still running. */
+const TMDB_TV: Record<string, { imdb_id: string; vote_count: number; status: string }> = {
+  70523: { imdb_id: 'tt5753856', vote_count: 7936, status: 'Ended' },
+  100088: { imdb_id: 'tt3581920', vote_count: 7440, status: 'Returning Series' },
+};
+
 let time: number;
 let store: Store;
 let upstream: ReturnType<typeof stubUpstream>;
@@ -35,6 +41,23 @@ function stubUpstream() {
         ? [{ id: 438631, title: 'Dune', original_title: 'Dune', release_date: '2021-09-15' }]
         : [];
       return Response.json({ results: hits });
+    }
+    if (url.pathname === '/3/search/tv') {
+      const hits = url.searchParams.get('query')!.toLowerCase().includes('dark')
+        ? [{ id: 70523, name: 'Dark', original_name: 'Dark', first_air_date: '2017-12-01' }]
+        : [];
+      return Response.json({ results: hits });
+    }
+    const tv = /^\/3\/tv\/(\d+)$/.exec(url.pathname)?.[1];
+    if (tv && TMDB_TV[tv]) {
+      const { imdb_id, ...show } = TMDB_TV[tv];
+      return Response.json({
+        id: Number(tv),
+        name: 'A show',
+        original_name: 'A show',
+        external_ids: { imdb_id },
+        ...show,
+      });
     }
     const id = /^\/3\/movie\/(\d+)$/.exec(url.pathname)?.[1];
     if (id && TMDB[id]) {
@@ -142,6 +165,29 @@ describe('ratings server cache', () => {
     );
   });
 
+  it('searches TV shows by kind, without the year', async () => {
+    const { get } = server();
+    const dark = await get('/v1/search?query=Dark&language=de-DE&kind=tv&year=2019');
+    expect(await dark.json()).toMatchObject([{ kind: 'tv', tmdbId: 70523, title: 'Dark' }]);
+    const asked = new URL(String(upstream.mock.calls[0][0]));
+    expect([asked.pathname, asked.searchParams.has('year')]).toEqual(['/3/search/tv', false]);
+    // Any year, and the default kind is a different search.
+    expect((await get('/v1/search?query=dark&language=de-DE&kind=tv')).headers.get('x-cache')).toBe(
+      'hit',
+    );
+    expect((await get('/v1/search?query=Dark&language=de-DE')).headers.get('x-cache')).toBe('miss');
+  });
+
+  it('keeps an ended show for a week, a running one for a day', async () => {
+    const { get } = server();
+    const dark = await get('/v1/tv/70523');
+    expect(await dark.json()).toMatchObject({ kind: 'tv', imdbId: 'tt5753856', ended: true });
+    await get('/v1/tv/100088');
+    time += 2 * DAY;
+    expect((await get('/v1/tv/70523')).headers.get('x-cache')).toBe('hit');
+    expect((await get('/v1/tv/100088')).headers.get('x-cache')).toBe('miss');
+  });
+
   it('asks upstream once when many clients want the same film at once', async () => {
     const { get } = server();
     const responses = await Promise.all(
@@ -174,6 +220,8 @@ describe('ratings server limits', () => {
     `/v1/search?query=${'a'.repeat(201)}`,
     '/v1/search?query=Dune&language=german',
     '/v1/search?query=Dune&year=soon',
+    '/v1/search?query=Dune&kind=book',
+    '/v1/tv/abc',
   ])('rejects %s without asking upstream', async (path) => {
     const { get } = server();
     expect((await get(path)).status).toBe(400);

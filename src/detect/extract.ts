@@ -1,6 +1,6 @@
 import { normalizeTitle } from '../match/normalize';
 import type { Candidate } from '../types';
-import { cleanSegments } from './clean';
+import { cleanSegments, isSeriesText } from './clean';
 import type { StructuredInfo } from './structured';
 
 export interface ExtractedCandidate extends Candidate {
@@ -23,19 +23,27 @@ const IGNORED_TAGS = new Set(['HTML', 'BODY', 'MAIN', 'NAV', 'HEADER', 'FOOTER',
 // Film detail links: "/kino-dortmund/film/primetime", "/movies/12345-dune-part-two/tickets".
 const FILM_PATH =
   /\/(?:film|filme|films|filmdetails?|movie|movies|kinofilm|kinofilme|spielfilm|spielfilme|title|titles)\/(.+)$/i;
+// Show detail links: "/serien/dark", "/series/the-bear-a1b2c3". Not "/show/" or "/tv/": cinemas
+// use those for screenings, broadcasters for whole sections.
+const SERIES_PATH = /\/(?:serie|serien|series|tv-?shows?|tv-?series)\/(.+)$/i;
 
 /**
- * The film a detail link points to, from its URL: "/film/avengers-doomsday-2026" -> "avengers
- * doomsday". Promo banners often carry a tagline as alt text but name the film in the link.
+ * The film or show a detail link points to, from its URL: "/film/avengers-doomsday-2026" ->
+ * "avengers doomsday". Promo banners often carry a tagline as alt text but name the film in the
+ * link.
  */
-export function titleFromUrl(href: string, base = location.href): string | null {
+export function titleFromUrl(
+  href: string,
+  base = location.href,
+): { title: string; series: boolean } | null {
   let path: string;
   try {
     path = decodeURIComponent(new URL(href, base).pathname);
   } catch {
     return null;
   }
-  const m = FILM_PATH.exec(path);
+  const film = FILM_PATH.exec(path);
+  const m = film ?? SERIES_PATH.exec(path);
   const slug = m?.[1]
     .split('/')
     .find((s) => /\p{L}{3}/u.test(s))
@@ -43,7 +51,7 @@ export function titleFromUrl(href: string, base = location.href): string | null 
     .replace(/^\d+[-_]|[-_](?:\d+|(?=[a-z]*\d)[a-z0-9]{8,})$/gi, '')
     .replace(/[-_+.]+/g, ' ')
     .trim();
-  return slug && /\p{L}{3}/u.test(slug) ? slug : null;
+  return slug && /\p{L}{3}/u.test(slug) ? { title: slug, series: !film } : null;
 }
 
 function visibleText(el: Element): string {
@@ -118,8 +126,17 @@ export function inPageChrome(el: Element): boolean {
  */
 export function extractCandidates(target: Element, opts: Options = {}): ExtractedCandidate[] {
   const found = new Map<string, ExtractedCandidate>();
-  const add = (raw: string | null | undefined, weight: number, source: string, anchor: Element) => {
+  /** The tile counts seasons or names an episode somewhere ("3 Staffeln"): it's a show. */
+  let seriesTile = false;
+  const add = (
+    raw: string | null | undefined,
+    weight: number,
+    source: string,
+    anchor: Element,
+    series = false,
+  ) => {
     if (!raw) return;
+    if (isSeriesText(raw)) seriesTile = true;
     cleanSegments(raw).forEach((c, i) => {
       const w = weight - i * 0.15;
       const key = normalizeTitle(c.title);
@@ -129,10 +146,17 @@ export function extractCandidates(target: Element, opts: Options = {}): Extracte
         // Several signals agreeing on the same text make it more likely to be the title.
         prev.weight = Math.max(prev.weight, w) + 0.1;
         prev.year ??= c.year;
+        if (series || c.series) prev.series = true;
       } else {
-        found.set(key, { text: c.title, year: c.year, weight: w, source, anchor });
+        const cand: ExtractedCandidate = { text: c.title, year: c.year, weight: w, source, anchor };
+        if (series || c.series) cand.series = true;
+        found.set(key, cand);
       }
     });
+  };
+  const addUrl = (href: string | null, weight: number, anchor: Element) => {
+    const fromUrl = titleFromUrl(href ?? '');
+    if (fromUrl) add(fromUrl.title, weight, 'url', anchor, fromUrl.series);
   };
 
   let el: Element | null = target;
@@ -156,10 +180,10 @@ export function extractCandidates(target: Element, opts: Options = {}): Extracte
       const link = single(el, 'a[href]');
       if (link) {
         add(visibleText(link) || link.textContent, base * 0.75, 'link', el);
-        add(titleFromUrl(link.getAttribute('href') ?? ''), base * 0.8, 'url', el);
+        addUrl(link.getAttribute('href'), base * 0.8, el);
       }
     }
-    if (el.tagName === 'A') add(titleFromUrl(el.getAttribute('href') ?? ''), base * 0.8, 'url', el);
+    if (el.tagName === 'A') addUrl(el.getAttribute('href'), base * 0.8, el);
 
     if (el.tagName === 'IMG') add(el.getAttribute('alt'), base * 0.95, 'img-alt', el);
     else {
@@ -185,12 +209,13 @@ export function extractCandidates(target: Element, opts: Options = {}): Extracte
     }
   }
 
-  const structured = opts.structured?.movies ?? [];
+  const structured = opts.structured?.titles ?? [];
   for (const c of found.values()) {
     const key = normalizeTitle(c.text);
     const sm = structured.find((m) => normalizeTitle(m.title) === key);
     if (sm) {
       c.weight += 0.2;
+      if (sm.series) c.series = true;
       if (c.year === undefined && sm.year !== undefined) {
         c.year = sm.year;
         c.softYear = true;
@@ -198,5 +223,6 @@ export function extractCandidates(target: Element, opts: Options = {}): Extracte
     }
   }
 
+  if (seriesTile) found.forEach((c) => (c.series = true));
   return [...found.values()].sort((a, b) => b.weight - a.weight).slice(0, 4);
 }

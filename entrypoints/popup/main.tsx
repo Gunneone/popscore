@@ -82,7 +82,7 @@ function Popup() {
   return (
     <main class="popup">
       <header>
-        <h1>Worth It?</h1>
+        <h1>Popscore</h1>
       </header>
 
       <section>

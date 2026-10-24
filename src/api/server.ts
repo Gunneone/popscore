@@ -32,16 +32,17 @@ async function serverGet<T>(
   return (await res.json()) as T;
 }
 
-/** TMDB and OMDb through the Worth It? ratings server (see server/), which holds the keys. */
+/** TMDB and OMDb through the Popscore ratings server (see server/), which holds the keys. */
 export function serverProvider(base = SERVER_URL): RatingsProvider {
   return {
     search: (query, opts) =>
       serverGet<MovieSummary[]>(base, '/v1/search', {
         query,
+        kind: opts.kind,
         language: opts.language,
         year: opts.year,
       }),
-    details: (tmdbId) => serverGet<MovieDetails>(base, `/v1/movie/${tmdbId}`),
+    details: (tmdbId, kind) => serverGet<MovieDetails>(base, `/v1/${kind}/${tmdbId}`),
     rating: (imdbId, opts) =>
       serverGet<ImdbRating>(base, `/v1/rating/${encodeURIComponent(imdbId)}`, {
         tag: opts?.tag ? 1 : undefined,

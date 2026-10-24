@@ -27,7 +27,7 @@ function KeyStatus({ state }: { state: KeyTestResult['tmdb'] | undefined }) {
     ok: 'Key works',
     invalid: 'Key was rejected',
     error: "Couldn't check the key (network?)",
-    missing: 'No key: the Worth It? server is used',
+    missing: 'No key: the Popscore server is used',
   }[state];
   const cls = { ok: 'ok', invalid: 'bad', error: 'warn', missing: '' }[state];
   return <span class={`status small ${cls}`}>{text}</span>;
@@ -55,11 +55,11 @@ function ApiKeys({ settings }: { settings: Settings }) {
         <span class="step">1</span> Your own API keys (optional)
       </h2>
       <p class="muted">
-        Worth It? looks movies up on TMDB and reads the IMDb rating from OMDb. Out of the box the
-        Worth It? server does both for you, so there's nothing to set up. To stay independent of it,
-        add your own free keys: each one replaces the server for its service, and with both the
-        extension never contacts it. Keys are stored in your browser profile and only sent to TMDB
-        and OMDb.
+        Popscore looks movies and shows up on TMDB and reads the IMDb rating from OMDb. Out of the
+        box the Popscore server does both for you, so there's nothing to set up. To stay independent
+        of it, add your own free keys: each one replaces the server for its service, and with both
+        the extension never contacts it. Keys are stored in your browser profile and only sent to
+        TMDB and OMDb.
       </p>
       <details class="own-keys" open={initiallyOpen}>
         <summary>Use my own keys</summary>
@@ -187,12 +187,38 @@ const LINK_TARGETS: [LinkTarget, string][] = [
   ['letterboxd', 'Letterboxd'],
 ];
 
+const KINDS: ['movies' | 'tvShows', string][] = [
+  ['movies', 'Movies'],
+  ['tvShows', 'TV shows'],
+];
+
 function CardSettings({ settings }: { settings: Settings }) {
   return (
     <section class="panel">
       <h2>
         <span class="step">3</span> The card
       </h2>
+      <div class="field">
+        <span>Rate</span>
+        <div class="row">
+          {KINDS.map(([key, name]) => {
+            // The last one ticked stays on: with neither, there'd be nothing to look up.
+            const only = settings[key] && !settings[key === 'movies' ? 'tvShows' : 'movies'];
+            return (
+              <label key={key}>
+                <input
+                  type="checkbox"
+                  checked={settings[key]}
+                  disabled={only}
+                  onChange={(e) => void updateSettings({ [key]: e.currentTarget.checked })}
+                />{' '}
+                {name}
+              </label>
+            );
+          })}
+          <span class="muted small">On the card and the score tags. At least one stays on.</span>
+        </div>
+      </div>
       <div class="field">
         <label for="dwell">Delay before the card opens</label>
         <div class="row">
@@ -219,11 +245,12 @@ function CardSettings({ settings }: { settings: Settings }) {
             Score tags on posters
             <br />
             <span class="muted small">
-              A small score on every movie you scroll past on the sites above, in the verdict color.
+              A small score on every movie or show you scroll past on the sites above, in the
+              verdict color.
               {settings.omdbKey && (
                 <>
                   {' '}
-                  Each new film uses an OMDb lookup on your key; past {TAG_OMDB_BUDGET} today, tags
+                  Each new title uses an OMDb lookup on your key; past {TAG_OMDB_BUDGET} today, tags
                   show TMDB's score and the rest is kept for the card.
                 </>
               )}
@@ -280,7 +307,7 @@ function Data({ settings }: { settings: Settings }) {
         </p>
       ) : (
         <p class="muted small">
-          Ratings are cached in your browser for up to 3 days, and on the Worth It? server for up to
+          Ratings are cached in your browser for up to 3 days, and on the Popscore server for up to
           a week, so repeat views are instant.
         </p>
       )}
@@ -292,12 +319,12 @@ function Data({ settings }: { settings: Settings }) {
         {cleared ? 'Cache cleared' : 'Clear cached ratings'}
       </button>
       <p class="muted small privacy">
-        <b>Privacy:</b> when you point at a title, or with score tags on, when a movie comes into
-        view on a site above, its title text and the page's language are sent to find the movie, and
-        the movie's IMDb id to get the rating. Without your own keys they go to the Worth It?
-        server, which asks TMDB and OMDb for you and keeps no record of who asked; with your own
-        key, that service is asked directly. Nothing else leaves your browser: no browsing history,
-        no analytics, no account.
+        <b>Privacy:</b> when you point at a title, or with score tags on, when a movie or show comes
+        into view on a site above, its title text and the page's language are sent to find it, and
+        its IMDb id to get the rating. Without your own keys they go to the Popscore server, which
+        asks TMDB and OMDb for you and keeps no record of who asked; with your own key, that service
+        is asked directly. Nothing else leaves your browser: no browsing history, no analytics, no
+        account.
       </p>
     </section>
   );
@@ -314,13 +341,14 @@ function Options() {
   return (
     <main class="options">
       <header>
-        <h1>Worth It?</h1>
-        <p class="muted">IMDb ratings for any movie you point at.</p>
+        <h1>Popscore</h1>
+        <p class="muted">IMDb ratings for any movie or show you point at.</p>
       </header>
       {welcome && (
         <div class="welcome">
-          <b>Welcome!</b> You're all set: point at a movie on Netflix, Prime Video, Disney+ or your
-          cinema's website. There's nothing to sign up for; your own API keys below are optional.
+          <b>Welcome!</b> You're all set: point at a movie or show on Netflix, Prime Video, Disney+
+          or your cinema's website. There's nothing to sign up for; your own API keys below are
+          optional.
         </div>
       )}
       <ApiKeys settings={settings} />

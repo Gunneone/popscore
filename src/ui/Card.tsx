@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { normalizeTitle } from '../match/normalize';
 import type { LinkTarget } from '../settings';
-import type { LookupError, LookupResult, MovieSummary } from '../types';
-import { displayScore, formatRuntime, formatVotes, verdict } from './format';
+import { titleKey, type LookupError, type LookupResult, type MovieSummary } from '../types';
+import { displayScore, formatRuntime, formatVotes, formatYears, verdict } from './format';
 
 export type CardState = { kind: 'loading' } | { kind: 'result'; result: LookupResult };
 
@@ -23,7 +23,7 @@ const ERROR_TEXT: Record<LookupError, string> = {
   'rate-limit':
     'Daily lookup limit reached (OMDb free keys allow 1,000 a day). Movies you looked up before still work.',
   'server-busy':
-    'The Worth It? server is busy. Try again in a bit, or add your own free API keys in Settings.',
+    'The Popscore server is busy. Try again in a bit, or add your own free API keys in Settings.',
   offline: "Couldn't reach the movie database. Check your connection.",
   unknown: 'Something went wrong looking this up.',
 };
@@ -31,7 +31,7 @@ const ERROR_TEXT: Record<LookupError, string> = {
 const RATING_ERROR_TEXT: Partial<Record<LookupError, string>> = {
   'rate-limit': "OMDb's free daily limit (1,000 lookups) is used up. Ratings return tomorrow.",
   'bad-omdb-key': "OMDb didn't accept your API key, so there's no IMDb rating.",
-  'server-busy': "The Worth It? server is busy, so there's no IMDb rating for now. Try again soon.",
+  'server-busy': "The Popscore server is busy, so there's no IMDb rating for now. Try again soon.",
   offline: "Couldn't get the IMDb rating. Check your connection.",
 };
 
@@ -50,7 +50,7 @@ export function Card(props: CardProps) {
     );
   else {
     const r = state.result;
-    body = <MatchView {...props} key={`${r.movie.tmdbId}:${r.query}`} result={r} />;
+    body = <MatchView {...props} key={`${titleKey(r.movie)}:${r.query}`} result={r} />;
   }
   return (
     <div class="card" role="dialog" aria-label="IMDb rating">
@@ -112,10 +112,16 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
       : m.originalTitle !== m.title
         ? m.originalTitle
         : null;
-  const facts = [m.genres.slice(0, 3).join(', '), m.runtime ? formatRuntime(m.runtime) : '']
+  const show = m.kind === 'tv';
+  const facts = [
+    m.genres.slice(0, 3).join(', '),
+    show && m.seasons ? `${m.seasons} season${m.seasons === 1 ? '' : 's'}` : '',
+    m.runtime ? formatRuntime(m.runtime) + (show ? ' episodes' : '') : '',
+  ]
     .filter(Boolean)
     .join(' · ');
   const current: MovieSummary = {
+    kind: m.kind,
     tmdbId: m.tmdbId,
     title: m.title,
     originalTitle: m.originalTitle,
@@ -125,12 +131,15 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
     voteCount: 0,
   };
   const ratingNote = result.ratingError ? RATING_ERROR_TEXT[result.ratingError] : undefined;
+  // Letterboxd only has films: shows go to IMDb, or TMDB when IMDb doesn't know them.
   const link =
-    props.linkTo === 'letterboxd'
+    props.linkTo === 'letterboxd' && !show
       ? { href: `https://letterboxd.com/tmdb/${m.tmdbId}/`, label: 'Letterboxd' }
       : m.imdbId
         ? { href: `https://www.imdb.com/title/${m.imdbId}/`, label: 'IMDb' }
-        : null;
+        : show
+          ? { href: `https://www.themoviedb.org/tv/${m.tmdbId}`, label: 'TMDB' }
+          : null;
 
   return (
     <>
@@ -144,7 +153,8 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
           <p class="title">{m.title}</p>
           {aka && <div class="aka">aka “{aka}”</div>}
           <div class="meta">
-            {m.year ?? 'Year unknown'} · Film{result.picked ? ' · your pick' : ''}
+            {formatYears(m) ?? 'Year unknown'} · {show ? 'TV series' : 'Film'}
+            {result.picked ? ' · your pick' : ''}
           </div>
           <div class={`rating ${v}`}>
             <span class="dot" />
@@ -176,7 +186,7 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
       )}
       <div class="footer">
         <button class="link" type="button" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? 'Close ▴' : 'Wrong movie? ▾'}
+          {open ? 'Close ▴' : show ? 'Wrong show? ▾' : 'Wrong movie? ▾'}
         </button>
         {link && (
           <a class="link" href={link.href} target="_blank" rel="noopener noreferrer">
@@ -215,7 +225,7 @@ function Picker(
           {alternatives.map((a) => {
             const thumb = a.posterPath ? thumbs[a.posterPath] : null;
             return (
-              <li key={a.tmdbId}>
+              <li key={titleKey(a)}>
                 <button
                   class="alt"
                   type="button"
@@ -223,7 +233,11 @@ function Picker(
                 >
                   {thumb ? <img src={thumb} alt="" /> : <span class="thumb" />}
                   <span>
-                    {a.title} <span class="year">{a.year ?? '—'}</span>
+                    {a.title}{' '}
+                    <span class="year">
+                      {a.year ?? '—'}
+                      {a.kind === 'tv' ? ' · TV' : ''}
+                    </span>
                   </span>
                 </button>
               </li>
@@ -242,7 +256,7 @@ function Picker(
           value={text}
           onInput={(e) => setText(e.currentTarget.value)}
           placeholder="Search another title…"
-          aria-label="Search another movie title"
+          aria-label="Search another title"
         />
         <button type="submit">Search</button>
       </form>
