@@ -231,7 +231,7 @@ async function markProbes(page: Page) {
 
 /** Counts the score tags and says what the first few are on ("7.1 ← Dune: Part Two"). */
 function readTags(): { poster: number; title: number; samples: string[] } {
-  const tags = [...document.querySelectorAll<HTMLElement>('worth-it-tag')];
+  const tags = [...document.querySelectorAll<HTMLElement>('popscore-tag')];
   const label = (tag: HTMLElement) => {
     const img = tag.parentElement?.querySelector('img');
     const text = img?.alt || tag.parentElement?.textContent || '';
@@ -272,7 +272,7 @@ async function readCard(cdp: CDPSession): Promise<string | undefined> {
     const { root } = await cdp.send('DOM.getDocument', { depth: 0 });
     const { nodeId } = await cdp.send('DOM.querySelector', {
       nodeId: root.nodeId,
-      selector: 'worth-it-card',
+      selector: 'popscore-card',
     });
     if (!nodeId) return undefined;
     const { node } = await cdp.send('DOM.describeNode', { nodeId, depth: -1, pierce: true });
@@ -349,7 +349,7 @@ for (const site of DEFAULT_SITES) {
           if (!point) continue;
           await page.mouse.move(point.x, point.y, { steps: 2 });
           await page.waitForTimeout(DWELL_WAIT_MS);
-          const card = page.locator('worth-it-card');
+          const card = page.locator('popscore-card');
           let state = (await card.count()) ? await card.getAttribute('data-state') : null;
           if (state === 'loading') {
             await page.waitForTimeout(3000);

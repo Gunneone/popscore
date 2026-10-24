@@ -9,11 +9,11 @@ await build({
     lib: {
       entry: 'scripts/probe-entry.ts',
       formats: ['iife'],
-      name: 'worthItProbe',
+      name: 'popscoreProbe',
       fileName: () => 'probe.js',
     },
   },
 });
 console.log(
-  'Wrote dist/probe/probe.js. Paste it into the DevTools console, then run worthItProbe.watch().',
+  'Wrote dist/probe/probe.js. Paste it into the DevTools console, then run popscoreProbe.watch().',
 );

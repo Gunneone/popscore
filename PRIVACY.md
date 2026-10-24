@@ -1,8 +1,8 @@
-# Privacy policy: Worth It?
+# Privacy policy: Popscore
 
 _Last updated: 24 October 2026_
 
-Worth It? shows IMDb ratings for movies you point at while browsing, and as small score tags on
+Popscore shows IMDb ratings for movies you point at while browsing, and as small score tags on
 the movies you see on the sites where it's switched on. It has no servers of its own, no accounts
 and no analytics.
 

@@ -1,4 +1,4 @@
-# Worth It?
+# Popscore
 
 A Chrome and Firefox extension that shows a movie's **IMDb rating in a hover card** while you browse
 cinema programmes (CineStar, Odeon, AMC, Hoyts, …) and streaming catalogs (Netflix, Prime Video,
@@ -56,7 +56,7 @@ the end of the title), so it scrolls, slides and gets clipped along with it. See
 `src/detect/scan.ts` and `entrypoints/content/tags.ts`.
 
 To see what it would detect on any site, without API keys, run `npm run probe`, paste
-`dist/probe/probe.js` into the DevTools console and call `worthItProbe.watch()`.
+`dist/probe/probe.js` into the DevTools console and call `popscoreProbe.watch()`.
 
 ## Setup for users
 
@@ -109,8 +109,8 @@ Load it by hand: `npm run build`, then in Chrome open `chrome://extensions`, ena
 
 See `store/listing.md` for listing text, permission justifications and the data disclosure, and
 `PRIVACY.md` for the privacy policy (host it publicly, e.g. via GitHub Pages, and link it in both
-stores). Run `npm run zip`, then upload `dist/worth-it-chrome-<version>.zip` to the Chrome Web Store and
-`dist/worth-it-firefox-<version>.zip` plus `dist/worth-it-source-<version>.zip` to addons.mozilla.org.
+stores). Run `npm run zip`, then upload `dist/popscore-chrome-<version>.zip` to the Chrome Web Store and
+`dist/popscore-firefox-<version>.zip` plus `dist/popscore-source-<version>.zip` to addons.mozilla.org.
 
 Movie data from [TMDB](https://www.themoviedb.org/) (this product uses the TMDB API but is not
 endorsed or certified by TMDB) and the [OMDb API](https://www.omdbapi.com/) (CC BY-NC 4.0, so the

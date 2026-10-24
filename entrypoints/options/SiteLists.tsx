@@ -186,7 +186,7 @@ export function SiteLists({ settings }: { settings: Settings }) {
         title="Your sites"
         hint="Sites you switched on from the toolbar button"
         entries={own}
-        empty="None yet. To add one, open the site and switch it on from the Worth It? toolbar button."
+        empty="None yet. To add one, open the site and switch it on from the Popscore toolbar button."
         onRemove={remove}
       />
     </div>

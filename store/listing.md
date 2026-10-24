@@ -2,7 +2,7 @@
 
 ## Name
 
-Worth It? – IMDb ratings on hover
+Popscore – IMDb ratings on hover
 
 ## Short description (≤ 132 chars, Chrome)
 
@@ -12,7 +12,7 @@ Point at a movie on cinema or streaming sites and see its IMDb rating instantly.
 
 Is it worth it, or is it trash? Stop opening IMDb in another tab.
 
-Worth It? puts a small IMDb score tag on every movie poster on cinema and streaming websites, and
+Popscore puts a small IMDb score tag on every movie poster on cinema and streaming websites, and
 shows a card with the details when you rest your pointer on a title or poster:
 
 • Score tags on the posters, in a traffic-light color, so you can scan a whole programme at once
@@ -64,7 +64,7 @@ user points at a title.
 ## Firefox (AMO)
 
 - `data_collection_permissions.required: ["websiteContent"]` is declared in the manifest.
-- Upload the `dist/worth-it-source-<version>.zip` from `npm run zip` with build instructions: `npm ci && npm run zip:firefox`
+- Upload the `dist/popscore-source-<version>.zip` from `npm run zip` with build instructions: `npm ci && npm run zip:firefox`
   (Node 22+).
 - Linter warnings about `innerHTML` come from Preact's renderer (`dangerouslySetInnerHTML` support),
   which the extension never uses.
