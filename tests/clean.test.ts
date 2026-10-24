@@ -111,6 +111,9 @@ describe('cleanTitle', () => {
     'English (Subtitled)',
     '3D Dolby Atmos',
     'Premium-Sitze verfügbar',
+    // Accessibility app badges (schauburg-kino.com: "GRETA" matched the 2018 film "Greta"):
+    'GRETA',
+    'Greta & Starks',
     // Genre tags (uci-kinowelt.de: "Familie" matched a 2025 film of that name):
     'Familie',
     'Buddy, Comedy, Animation, Fantasy',

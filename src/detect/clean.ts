@@ -99,9 +99,10 @@ const SCREENING_WORD = new RegExp(
     '2d|3d|hfr|imax|4dx|screenx|dolby|atmos|laser|premium|deluxe|recliner|barrierefrei|' +
     'audiodeskription|sitze|sitzplätze|plätze|seats|verfügbar|available|ausverkauft|' +
     'restplätze|wenige|freie|mit|with|ohne|without|und|and|in|' +
-    // Accessible screenings: "On-Screen Captions", "Sensory Friendly", "Audio Described".
+    // Accessible screenings: "On-Screen Captions", "Sensory Friendly", "Audio Described", and the
+    // "GRETA" badge of the Greta & Starks app (audio description and subtitles in German cinemas).
     'on|screen|open|captions?|captioned|sensory|friendly|relaxed|autism|audio|described|' +
-    'screenings?|vorstellung|hörfilm' +
+    'screenings?|vorstellung|hörfilm|greta|starks' +
     ')$',
 );
 
