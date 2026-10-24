@@ -45,6 +45,8 @@ user points at a title.
   rating card and tags on those pages.
 - **api.themoviedb.org, image.tmdb.org, www.omdbapi.com**: look up the movie, its poster and its
   IMDb rating.
+- **files.tmdb.org**: download TMDB's public list of TV series once a week, so series tiles get no
+  movie rating. It's the same file for everyone; nothing is sent with the request.
 - **Optional host permissions (`<all_urls>`)**: requested only when the user turns on "Alt-hover
   on every site" or enables an additional site from the toolbar.
 - **storage**: settings, API keys, cache of looked-up ratings.

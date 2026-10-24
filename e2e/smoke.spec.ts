@@ -21,6 +21,7 @@ test.beforeEach(async () => {
   await context.route(PAGE_URL, (route) =>
     route.fulfill({ status: 200, contentType: 'text/html', body: FIXTURE }),
   );
+  await failSeriesList();
 });
 
 test.afterEach(async () => {
@@ -33,6 +34,24 @@ async function setKeys(tmdbKey: string, omdbKey: string, extra: object = {}) {
     tmdbKey,
     omdbKey,
     ...extra,
+  });
+}
+
+/**
+ * Fails the download of TMDB's weekly TV series list (5 MB from files.tmdb.org) inside the
+ * extension's service worker, before any lookup starts it. Lookups then ask TMDB's TV search,
+ * as on a first run before the list arrives. The mocks below pass it through.
+ */
+async function failSeriesList() {
+  const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+  await worker.evaluate(() => {
+    const g = globalThis as unknown as { fetch: typeof fetch };
+    const real = g.fetch.bind(globalThis);
+    g.fetch = async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.startsWith('https://files.tmdb.org/')) return new Response(null, { status: 403 });
+      return real(input, init);
+    };
   });
 }
 
@@ -77,6 +96,8 @@ async function mockMovieApis() {
     g.fetch = async (input, init) => {
       const url = new URL(input instanceof Request ? input.url : String(input));
       if (url.hostname === 'api.themoviedb.org') {
+        // No TV series of the films' names.
+        if (url.pathname === '/3/search/tv') return json({ results: [] });
         if (url.pathname === '/3/search/movie') {
           const q = (url.searchParams.get('query') ?? '').toLowerCase();
           const hits = films.filter((f) => q.includes(f.key));

@@ -6,6 +6,8 @@ export interface ScoreContext {
   now: Date;
   /** The year hint is unreliable (see Candidate.softYear): it ranks, but doesn't reject. */
   softYear?: boolean;
+  /** The most popular TV series named exactly like the query, if lookup checked for one. */
+  series?: { popularity: number };
 }
 
 export interface Scored {
@@ -16,10 +18,16 @@ export interface Scored {
   score: number;
   /** Good enough to show a card without the user asking (auto mode). */
   confident: boolean;
+  /** Only a subtitle matches, or few people rated the film: a series of that name may be meant. */
+  doubtful: boolean;
 }
 
 const MONTH = 30 * 86_400_000;
 export const CONFIDENT_SIMILARITY = 0.86;
+/** Fewer TMDB votes than this, and a film gives way to a much more popular series of its name. */
+export const WELL_KNOWN_VOTES = 2000;
+/** "Much more popular": TMDB popularity this many times the film's. */
+export const SERIES_POPULARITY_RATIO = 5;
 
 /** Released between 18 months ago and 6 months from now: what a cinema plausibly shows. */
 function isCurrent(movie: MovieSummary, now: Date): boolean {
@@ -71,8 +79,19 @@ export function rankResults(
     // "<Title>: ..." specials or sequels), it's a show or franchise, and year and popularity
     // picked this one, not the title.
     const ambiguous = subtitled && sim < 1 && named > 1;
-    const confident = sim >= CONFIDENT_SIMILARITY && yearOk && !obscure && !tvOnly && !ambiguous;
-    return { movie, sim, score, confident };
+    // A series of exactly this name that is far more popular than the film is what the page
+    // most likely shows ("Wednesday", not "A Wednesday!"). Popularity favors running shows, so
+    // only films few people rated, or that only a subtitle matches, give way; a year on the page
+    // that fits the film keeps it.
+    const yearFits = yearHint !== undefined && !ctx.softYear && movie.year === yearHint;
+    const doubtful = !yearFits && ((subtitled && sim < 1) || movie.voteCount < WELL_KNOWN_VOTES);
+    const outshone =
+      !!ctx.series &&
+      doubtful &&
+      ctx.series.popularity >= SERIES_POPULARITY_RATIO * movie.popularity;
+    const confident =
+      sim >= CONFIDENT_SIMILARITY && yearOk && !obscure && !tvOnly && !ambiguous && !outshone;
+    return { movie, sim, score, confident, doubtful };
   });
   return scored.sort((a, b) => b.score - a.score);
 }
