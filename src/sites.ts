@@ -220,7 +220,7 @@ export function siteState(url: string, s: SiteSettings): SiteState {
  * Builds can point elsewhere with WXT_SERVER_URL. `.example` never resolves: set the real address
  * before a release.
  */
-export const DEFAULT_SERVER_URL = 'https://ratings.popscore.example';
+export const DEFAULT_SERVER_URL = 'https://popscore.gunne.one';
 
 /** Hosts the background worker talks to. */
 export function apiHostPermissions(serverUrl: string): string[] {
