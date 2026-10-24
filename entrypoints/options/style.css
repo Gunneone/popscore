@@ -59,6 +59,16 @@
   font-size: 12px;
 }
 
+.own-keys summary {
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.own-keys[open] summary {
+  margin-bottom: 12px;
+}
+
 .key {
   margin-bottom: 16px;
 }

@@ -3,6 +3,9 @@ import { ApiError } from './errors';
 
 const API = 'https://www.omdbapi.com/';
 
+/** A rating on fewer votes than this still moves a lot, so caches refresh it daily. */
+export const FEW_VOTES = 100;
+
 interface OmdbResponse {
   Response: 'True' | 'False';
   Error?: string;

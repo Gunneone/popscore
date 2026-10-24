@@ -1,5 +1,6 @@
 import { toLookupError } from './api/errors';
-import { directProvider, type RatingsProvider } from './api/provider';
+import { FEW_VOTES } from './api/omdb';
+import { makeProvider, type RatingsProvider } from './api/provider';
 import { TMDB_IMAGE } from './api/tmdb';
 import { cacheGet, cacheSet, DAY } from './cache';
 import { normalizeTitle } from './match/normalize';
@@ -10,7 +11,6 @@ import {
   getPick,
   getSettings,
   getUsage,
-  hasKeys,
   mediaKinds,
   savePick,
   type PickRef,
@@ -37,8 +37,13 @@ export interface LookupDeps {
   now?: Date;
   /** Score tags only need the numbers, not the poster. */
   skipPoster?: boolean;
-  /** Don't ask OMDb for ratings that aren't cached once this many calls were made today. */
+  /**
+   * Own OMDb key: don't ask OMDb for ratings that aren't cached once this many calls were made
+   * today.
+   */
   omdbBudget?: number;
+  /** A score tag's lookup: the ratings server serves these last when it's short of lookups. */
+  tag?: boolean;
   /** The weekly list of popular TV series (see src/series.ts). */
   listedSeries?: (name: string) => Promise<number | undefined>;
 }
@@ -51,12 +56,8 @@ export function tmdbLanguage(pageLang: string): string {
   return base === 'en' ? 'en-US' : `${base}-${base.toUpperCase()}`;
 }
 
-async function resolveProvider(
-  deps: LookupDeps,
-  settings: Settings,
-): Promise<RatingsProvider | null> {
-  if (deps.provider) return deps.provider;
-  return hasKeys(settings) ? directProvider(settings) : null;
+function resolveProvider(deps: LookupDeps, settings: Settings): RatingsProvider {
+  return deps.provider ?? makeProvider(settings);
 }
 
 async function cachedSearch(
@@ -136,17 +137,24 @@ function kindsFor(cand: Candidate, enabled: MediaKind[], req: LookupRequest): Me
 async function cachedRating(
   provider: RatingsProvider,
   imdbId: string,
-  budget = Infinity,
+  deps: LookupDeps,
 ): Promise<ImdbRating> {
   const key = `r:${imdbId}`;
   const hit = await cacheGet<ImdbRating>(key);
   if (hit) return hit;
-  // Over budget: no rating, and nothing cached, so the card can still fetch the real one later.
-  if ((await getUsage()).omdbCalls >= budget) return { rating: null, votes: null };
-  await countOmdbCall();
-  const rating = await provider.rating(imdbId);
+  if (provider.ownOmdbKey) {
+    // Over budget: no rating, and nothing cached, so the card can still fetch the real one later.
+    if ((await getUsage()).omdbCalls >= (deps.omdbBudget ?? Infinity)) {
+      return { rating: null, votes: null };
+    }
+    await countOmdbCall();
+  }
+  const rating = await provider.rating(imdbId, { tag: deps.tag });
   // OMDb lags behind IMDb for new releases; check again soon so the real rating appears early.
-  await cacheSet(key, rating, rating.rating === null ? DAY / 4 : 3 * DAY);
+  // A rating on a few votes still moves a lot, so it's refreshed daily, like on the server.
+  const ttl =
+    rating.rating === null ? DAY / 4 : (rating.votes ?? 0) < FEW_VOTES ? 1 * DAY : 3 * DAY;
+  await cacheSet(key, rating, ttl);
   return rating;
 }
 
@@ -185,7 +193,7 @@ async function buildCard(
   let ratingError: LookupError | undefined;
   if (details.imdbId) {
     try {
-      rating = await cachedRating(provider, details.imdbId, deps.omdbBudget);
+      rating = await cachedRating(provider, details.imdbId, deps);
     } catch (err) {
       ratingError = toLookupError(err);
     }
@@ -226,8 +234,7 @@ async function searchKinds(
 export async function lookup(req: LookupRequest, deps: LookupDeps = {}): Promise<LookupResult> {
   try {
     const settings = await getSettings();
-    const provider = await resolveProvider(deps, settings);
-    if (!provider) return { status: 'error', error: 'missing-keys' };
+    const provider = resolveProvider(deps, settings);
     const language = tmdbLanguage(req.pageLang);
     const now = deps.now ?? new Date();
     const enabled = mediaKinds(settings);
@@ -313,8 +320,7 @@ export async function pickMovie(
   deps: LookupDeps = {},
 ): Promise<LookupResult> {
   try {
-    const provider = await resolveProvider(deps, await getSettings());
-    if (!provider) return { status: 'error', error: 'missing-keys' };
+    const provider = resolveProvider(deps, await getSettings());
     await savePick(normalizeTitle(query), ref);
     const { movie, ratingError } = await buildCard(provider, ref, deps);
     return {

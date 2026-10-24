@@ -28,7 +28,7 @@ const ROOT_MARGIN = '300px';
 /** One tag per film per tile: how far up to look for one that's already there. */
 const TILE_DEPTH = 4;
 /** These won't fix themselves while the page is open, so they aren't retried. */
-const KEY_ERRORS = ['missing-keys', 'bad-tmdb-key', 'bad-omdb-key'];
+const KEY_ERRORS = ['bad-tmdb-key', 'bad-omdb-key'];
 const RETRY_MS = 30_000;
 
 function isOurs(node: Node): boolean {

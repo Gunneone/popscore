@@ -34,7 +34,11 @@ async function handle(msg: Message): Promise<Responses[Message['type']]> {
       return lookup(msg.req);
     case 'tag': {
       await keepSeriesListFreshFor(msg.req);
-      const result = await lookup(msg.req, { skipPoster: true, omdbBudget: TAG_OMDB_BUDGET });
+      const result = await lookup(msg.req, {
+        skipPoster: true,
+        omdbBudget: TAG_OMDB_BUDGET,
+        tag: true,
+      });
       if (result.status === 'error') throw new Error(result.error);
       if (result.status !== 'match') return null;
       const { kind, tmdbId } = result.movie;

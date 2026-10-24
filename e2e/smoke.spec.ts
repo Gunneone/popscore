@@ -1,6 +1,7 @@
 import { chromium, expect, test, type BrowserContext } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { DEFAULT_SERVER_URL } from '../src/sites';
 
 // Loads the built Chrome extension and hovers posters on a fake cinema page served under a real
 // cinema domain, so the manifest's content script runs. Build first: `npm run build`.
@@ -11,6 +12,8 @@ const PAGE_URL = 'https://www.cinestar.de/popscore-e2e';
 const STREAMING_URL = 'https://www.joyn.de/popscore-e2e';
 const RANKED = readFileSync(path.resolve('e2e/fixtures/ranked.html'), 'utf8');
 const RANKED_URL = 'https://www.cinestar.de/popscore-ranked';
+/** The ratings server the build asks without own keys (`npm run e2e` builds with the same .env). */
+const SERVER_ORIGIN = new URL(process.env.WXT_SERVER_URL || DEFAULT_SERVER_URL).origin;
 
 // The extension's service worker global, where `evaluate` runs.
 declare const chrome: { storage: { sync: { set(items: object): Promise<void> } } };
@@ -97,17 +100,68 @@ const SHOWS = [
   { key: 'stranger', id: 66732, title: 'Stranger Things', date: '2016-07-15', votes: 18000, tmdb: 8.6, imdb: 'tt4574334', imdbRating: 8.6 },
 ];
 
-/** Stands in for TMDB and OMDb inside the extension's service worker, with the titles above. */
+/**
+ * Stands in for TMDB, OMDb and the ratings server inside the extension's service worker, with the
+ * titles above. The hosts asked are kept in the worker's `asked`.
+ */
 async function mockMovieApis() {
   const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
   await worker.evaluate(
-    ([films, shows]) => {
-      const g = globalThis as unknown as { fetch: typeof fetch };
+    ({ films, shows, serverOrigin }) => {
+      const g = globalThis as unknown as { fetch: typeof fetch; asked: string[] };
       const real = g.fetch.bind(globalThis);
+      g.asked = [];
       const json = (body: unknown) =>
         new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
       g.fetch = async (input, init) => {
         const url = new URL(input instanceof Request ? input.url : String(input));
+        g.asked.push(url.hostname);
+        if (url.origin === serverOrigin) {
+          if (url.pathname === '/v1/search') {
+            const q = (url.searchParams.get('query') ?? '').toLowerCase();
+            const kind = url.searchParams.get('kind') === 'tv' ? 'tv' : 'movie';
+            const titles: typeof films = kind === 'tv' ? shows : films;
+            return json(
+              titles
+                .filter((f) => q.includes(f.key))
+                .map((f) => ({
+                  kind,
+                  tmdbId: f.id,
+                  title: f.title,
+                  originalTitle: f.title,
+                  releaseDate: f.date,
+                  year: Number(f.date.slice(0, 4)),
+                  posterPath: null,
+                  popularity: 50,
+                  voteCount: f.votes,
+                })),
+            );
+          }
+          const details = /^\/v1\/(movie|tv)\/(\d+)$/.exec(url.pathname);
+          const rating = /^\/v1\/rating\/(.+)$/.exec(url.pathname);
+          const f = details
+            ? (details[1] === 'tv' ? shows : films).find((m) => m.id === Number(details[2]))
+            : [...films, ...shows].find((m) => m.imdb === rating?.[1]);
+          if (!f) return new Response('{"error":"not-found"}', { status: 404 });
+          if (details) {
+            return json({
+              kind: details[1],
+              tmdbId: f.id,
+              title: f.title,
+              originalTitle: f.title,
+              year: Number(f.date.slice(0, 4)),
+              runtime: 120,
+              genres: [],
+              overview: '',
+              posterPath: null,
+              imdbId: f.imdb,
+              tmdbRating: f.tmdb,
+              tmdbVotes: f.votes,
+              ...(details[1] === 'tv' ? { seasons: 5, ended: true } : {}),
+            });
+          }
+          return json({ rating: f.imdbRating, votes: f.imdbRating ? 1000 : null });
+        }
         if (url.hostname === 'api.themoviedb.org') {
           if (url.pathname === '/3/search/movie') {
             const q = (url.searchParams.get('query') ?? '').toLowerCase();
@@ -171,17 +225,44 @@ async function mockMovieApis() {
         return real(input, init);
       };
     },
-    [FILMS, SHOWS] as const,
+    { films: FILMS, shows: SHOWS, serverOrigin: SERVER_ORIGIN },
   );
+  return {
+    asked: () => worker.evaluate(() => (globalThis as unknown as { asked: string[] }).asked),
+  };
 }
 
-test('asks for API keys when none are set', async () => {
+test('shows ratings through the ratings server without own keys', async () => {
+  const apis = await mockMovieApis();
+
   const page = await context.newPage();
   await page.goto(PAGE_URL);
-  await page.locator('#poster-dune').hover();
-  await expect(page.locator('popscore-card')).toHaveAttribute('data-state', 'error:missing-keys', {
+  await expect(page.locator('popscore-tag[data-tmdb="693134"]')).toHaveAttribute(
+    'data-score',
+    '8.5',
+    { timeout: 10_000 },
+  );
+  await page.locator('#poster-unfassbaren').hover();
+  await expect(page.locator('popscore-card')).toHaveAttribute('data-state', 'match', {
     timeout: 5000,
   });
+  const hosts = new Set(await apis.asked());
+  expect(hosts.has(new URL(SERVER_ORIGIN).hostname)).toBe(true);
+  expect(hosts.has('api.themoviedb.org') || hosts.has('www.omdbapi.com')).toBe(false);
+});
+
+test('tags TV shows through the ratings server too', async () => {
+  const apis = await mockMovieApis();
+
+  const page = await context.newPage();
+  await page.goto(STREAMING_URL);
+  await expect(page.locator('popscore-tag[data-kind="tv"][data-tmdb="66732"]')).toHaveAttribute(
+    'data-score',
+    '8.6',
+    { timeout: 10_000 },
+  );
+  const hosts = new Set(await apis.asked());
+  expect(hosts.has('api.themoviedb.org') || hosts.has('www.omdbapi.com')).toBe(false);
 });
 
 test('shows the IMDb rating for a hovered poster', async () => {

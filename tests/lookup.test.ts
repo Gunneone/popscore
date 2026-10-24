@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { ApiError } from '../src/api/errors';
 import type { RatingsProvider } from '../src/api/provider';
+import { SERVER_URL } from '../src/api/server';
 import { clearCache } from '../src/cache';
 import { lookup, pickMovie, tmdbLanguage } from '../src/lookup';
 import { saveSeriesList } from '../src/series';
@@ -107,14 +108,19 @@ const details = (id: number, kind: MediaKind = 'movie'): MovieDetails => {
     : base;
 };
 
+/** Ratings come from an own OMDb key unless `ownOmdbKey: false`. */
 function makeProvider(overrides: Partial<RatingsProvider> = {}) {
   return {
     search: vi.fn(
       async (q: string, o: { kind: MediaKind }) => (o.kind === 'tv' ? SEARCH_TV : SEARCH)[q] ?? [],
     ),
     details: vi.fn(async (id: number, kind: MediaKind) => details(id, kind)),
-    rating: vi.fn(async () => ({ rating: 7.2, votes: 712_345 })),
+    rating: vi.fn(async (_imdbId: string, _opts?: { tag?: boolean }) => ({
+      rating: 7.2,
+      votes: 712_345,
+    })),
     ...overrides,
+    ownOmdbKey: overrides.ownOmdbKey ?? true,
   } satisfies RatingsProvider;
 }
 
@@ -214,9 +220,51 @@ describe('lookup', () => {
     expect(result).toMatchObject({ status: 'match', query: 'Dune', movie: { tmdbId: 438631 } });
   });
 
-  it('reports missing keys without calling anything', async () => {
-    const result = await lookup(req('Dune'));
-    expect(result).toEqual({ status: 'error', error: 'missing-keys' });
+  it('asks the ratings server when no keys are set', async () => {
+    const asked: URL[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: URL | string) => {
+        const u = new URL(String(url));
+        asked.push(u);
+        if (u.pathname === '/v1/search') return Response.json(SEARCH.Dune);
+        if (u.pathname === '/v1/movie/438631') return Response.json(details(438631));
+        if (u.pathname === '/v1/rating/tt438631') {
+          return Response.json({ rating: 8, votes: 1_012_345 });
+        }
+        return Response.json({ error: 'not-found' }, { status: 404 });
+      }),
+    );
+    const result = await lookup(req('Dune'), { fetchPoster, tag: true });
+    expect(result).toMatchObject({ status: 'match', movie: { tmdbId: 438631, rating: 8 } });
+    expect(asked.every((u) => u.origin === new URL(SERVER_URL).origin)).toBe(true);
+    expect(asked.find((u) => u.pathname === '/v1/search')?.searchParams.get('language')).toBe(
+      'de-DE',
+    );
+    // Tags say so, for the server's budget; the browser's own OMDb count stays untouched.
+    expect(asked.find((u) => u.pathname.startsWith('/v1/rating/'))?.searchParams.get('tag')).toBe(
+      '1',
+    );
+    expect((await getUsage()).omdbCalls).toBe(0);
+    vi.unstubAllGlobals();
+  });
+
+  it('shows the movie with a note when the server is busy for the rating', async () => {
+    const provider = makeProvider({
+      ownOmdbKey: false,
+      rating: vi.fn(async () => {
+        throw new ApiError('server-busy', 'busy');
+      }),
+    });
+    const result = await lookup(req('Dune'), { provider, fetchPoster, omdbBudget: 0 });
+    expect(result).toMatchObject({
+      status: 'match',
+      ratingError: 'server-busy',
+      movie: { rating: null, tmdbRating: 7.5 },
+    });
+    // The own-key budget doesn't apply to the server.
+    expect(provider.rating).toHaveBeenCalledTimes(1);
+    expect((await getUsage()).omdbCalls).toBe(0);
   });
 
   it('maps API errors', async () => {
@@ -261,6 +309,20 @@ describe('lookup', () => {
     const provider = makeProvider({ rating });
     await lookup(req('Dune'), { provider, fetchPoster });
     vi.setSystemTime(new Date('2026-10-17T19:00:00Z'));
+    await lookup(req('Dune'), { provider, fetchPoster });
+    expect(rating).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+  });
+
+  it('re-checks a rating on fewer than 100 votes after a day', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-17T12:00:00Z') });
+    const rating = vi.fn(async () => ({ rating: 6.1, votes: 99 }));
+    const provider = makeProvider({ rating });
+    await lookup(req('Dune'), { provider, fetchPoster });
+    vi.setSystemTime(new Date('2026-10-18T11:00:00Z'));
+    await lookup(req('Dune'), { provider, fetchPoster });
+    expect(rating).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(new Date('2026-10-18T13:00:00Z'));
     await lookup(req('Dune'), { provider, fetchPoster });
     expect(rating).toHaveBeenCalledTimes(2);
     vi.useRealTimers();
@@ -388,7 +450,7 @@ describe('lookup', () => {
       movie: { kind: 'tv', tmdbId: 75656, title: 'Dark', seasons: 3, imdbId: 'tt975656' },
     });
     expect(provider.details).toHaveBeenCalledWith(75656, 'tv');
-    expect(provider.rating).toHaveBeenCalledWith('tt975656');
+    expect(provider.rating).toHaveBeenCalledWith('tt975656', expect.anything());
   });
 
   it('keeps a movie and a show with the same TMDB id apart', async () => {
@@ -520,8 +582,6 @@ describe('lookup and TV series', () => {
   // The weekly list of popular series, by normalized name.
   const LIST: Record<string, number> = { wednesday: 69.5, friends: 139.6 };
   const listedSeries = async (name: string) => LIST[name];
-  const tvSearches = (provider: RatingsProvider) =>
-    vi.mocked(provider.search).mock.calls.filter(([, o]) => o.kind === 'tv');
 
   describe('with TV shows switched off', () => {
     beforeEach(async () => {
@@ -532,7 +592,7 @@ describe('lookup and TV series', () => {
       const provider = makeProvider();
       const result = await lookup(req('Wednesday'), { provider, listedSeries });
       expect(result).toMatchObject({ status: 'nomatch', query: 'Wednesday' });
-      expect(tvSearches(provider)).toHaveLength(0);
+      expect(searches(provider, 'tv')).toHaveLength(0);
       // Alt-hover still finds the film.
       const manual = await lookup(req('Wednesday', { mode: 'manual' }), {
         provider,
@@ -552,14 +612,14 @@ describe('lookup and TV series', () => {
         language: 'de-DE',
       });
       await lookup(req('Haus des Geldes'), { provider, listedSeries });
-      expect(tvSearches(provider)).toHaveLength(1);
+      expect(searches(provider, 'tv')).toHaveLength(1);
     });
 
     it('keeps a film few people rated when TMDB has no series of that name', async () => {
       const provider = makeProvider();
       const result = await lookup(req('Heldin'), { provider, listedSeries, fetchPoster });
       expect(result).toMatchObject({ status: 'match', movie: { kind: 'movie', tmdbId: 1356670 } });
-      expect(tvSearches(provider)).toHaveLength(1);
+      expect(searches(provider, 'tv')).toHaveLength(1);
     });
 
     it('checks for no series for well-known films, or in manual mode', async () => {
@@ -573,7 +633,7 @@ describe('lookup and TV series', () => {
       });
       expect(manual).toMatchObject({ status: 'match', movie: { tmdbId: 689249 } });
       expect(list).not.toHaveBeenCalled();
-      expect(tvSearches(provider)).toHaveLength(0);
+      expect(searches(provider, 'tv')).toHaveLength(0);
     });
 
     it('reads the stored weekly list by default', async () => {
@@ -581,7 +641,7 @@ describe('lookup and TV series', () => {
       await saveSeriesList({ shows: { wednesday: 69.5 }, fetched: now, tried: now });
       const provider = makeProvider();
       expect((await lookup(req('Wednesday'), { provider })).status).toBe('nomatch');
-      expect(tvSearches(provider)).toHaveLength(0);
+      expect(searches(provider, 'tv')).toHaveLength(0);
     });
   });
 
@@ -601,7 +661,7 @@ describe('lookup and TV series', () => {
     const provider = makeProvider();
     const result = await lookup(req('Wednesday', { cinema: true }), { provider, listedSeries });
     expect(result).toMatchObject({ status: 'nomatch', query: 'Wednesday' });
-    expect(tvSearches(provider)).toHaveLength(0);
+    expect(searches(provider, 'tv')).toHaveLength(0);
   });
 });
 

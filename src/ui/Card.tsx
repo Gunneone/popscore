@@ -18,11 +18,12 @@ export interface CardProps {
 }
 
 const ERROR_TEXT: Record<LookupError, string> = {
-  'missing-keys': 'Add your free TMDB and OMDb API keys to see IMDb ratings here.',
   'bad-tmdb-key': "TMDB didn't accept your API key.",
   'bad-omdb-key': "OMDb didn't accept your API key.",
   'rate-limit':
     'Daily lookup limit reached (OMDb free keys allow 1,000 a day). Movies you looked up before still work.',
+  'server-busy':
+    'The Popscore server is busy. Try again in a bit, or add your own free API keys in Settings.',
   offline: "Couldn't reach the movie database. Check your connection.",
   unknown: 'Something went wrong looking this up.',
 };
@@ -30,10 +31,12 @@ const ERROR_TEXT: Record<LookupError, string> = {
 const RATING_ERROR_TEXT: Partial<Record<LookupError, string>> = {
   'rate-limit': "OMDb's free daily limit (1,000 lookups) is used up. Ratings return tomorrow.",
   'bad-omdb-key': "OMDb didn't accept your API key, so there's no IMDb rating.",
-  offline: "Couldn't reach OMDb for the IMDb rating.",
+  'server-busy': "The Popscore server is busy, so there's no IMDb rating for now. Try again soon.",
+  offline: "Couldn't get the IMDb rating. Check your connection.",
 };
 
-const KEY_ERRORS: LookupError[] = ['missing-keys', 'bad-tmdb-key', 'bad-omdb-key'];
+/** Errors the settings page can fix: own keys to correct, or to add. */
+const SETTINGS_ERRORS: LookupError[] = ['bad-tmdb-key', 'bad-omdb-key', 'server-busy'];
 
 export function Card(props: CardProps) {
   const { state } = props;
@@ -73,7 +76,7 @@ function ErrorView(props: CardProps & { error: LookupError }) {
   return (
     <>
       <p class="message">{ERROR_TEXT[props.error]}</p>
-      {KEY_ERRORS.includes(props.error) && (
+      {SETTINGS_ERRORS.includes(props.error) && (
         <button class="primary" type="button" onClick={props.onOpenSettings}>
           Open settings
         </button>
@@ -174,7 +177,7 @@ function MatchView(props: CardProps & { result: Extract<LookupResult, { status: 
       {ratingNote && (
         <div class="note">
           {ratingNote}{' '}
-          {result.ratingError === 'bad-omdb-key' && (
+          {result.ratingError && SETTINGS_ERRORS.includes(result.ratingError) && (
             <button class="link" type="button" onClick={props.onOpenSettings}>
               Settings
             </button>

@@ -20,7 +20,10 @@
     "lint:firefox": "wxt build -b firefox && web-ext lint --source-dir dist/firefox",
     "postinstall": "wxt prepare",
     "probe": "node scripts/build-probe.mjs",
-    "zip:firefox": "wxt zip -b firefox"
+    "zip:firefox": "wxt zip -b firefox",
+    "server:build": "vite build -c server/vite.config.ts",
+    "server:start": "node --env-file-if-exists=.env dist/server/index.mjs",
+    "server:dev": "npm run server:build && (vite build -c server/vite.config.ts --watch --logLevel warn & node --env-file-if-exists=.env --watch dist/server/index.mjs)"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",

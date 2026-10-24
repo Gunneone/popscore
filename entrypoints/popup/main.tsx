@@ -5,7 +5,6 @@ import { CONTENT_SCRIPT_FILE } from '@/src/registration';
 import {
   completePendingSite,
   getSettings,
-  hasKeys,
   pendingSiteItem,
   updateSettings,
   type Settings,
@@ -44,7 +43,6 @@ function Popup() {
   }, []);
 
   if (!settings) return null;
-  const ready = hasKeys(settings);
   const state = tab ? siteState(tab.url, settings) : null;
   const site = state?.site;
   const pattern = tab ? originPattern(tab.url) : null;
@@ -85,23 +83,7 @@ function Popup() {
     <main class="popup">
       <header>
         <h1>Popscore</h1>
-        <span class={`status small ${ready ? 'ok' : 'warn'}`}>
-          {ready ? 'Ready' : 'Setup needed'}
-        </span>
       </header>
-
-      {!ready && (
-        <section class="setup">
-          <p>Add your two free API keys to start seeing IMDb ratings.</p>
-          <button
-            class="btn primary"
-            type="button"
-            onClick={() => void browser.runtime.openOptionsPage()}
-          >
-            Set up keys
-          </button>
-        </section>
-      )}
 
       <section>
         {pattern && tab ? (

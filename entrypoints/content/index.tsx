@@ -3,7 +3,7 @@ import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { extractCandidates, inPageChrome } from '@/src/detect/extract';
 import { readStructured, type StructuredInfo } from '@/src/detect/structured';
 import { send } from '@/src/messages';
-import { getSettings, hasKeys, mediaKinds, watchSettings, type Settings } from '@/src/settings';
+import { getSettings, mediaKinds, watchSettings, type Settings } from '@/src/settings';
 import { DEFAULT_SITE_MATCHES, findDefaultSite, siteState } from '@/src/sites';
 import type { LookupResult, MovieSummary } from '@/src/types';
 import { Card, type CardState } from '@/src/ui/Card';
@@ -56,7 +56,7 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
   /** Score tags on every movie: enabled sites only, never where there's just Alt-hover. */
   let tags: ScoreTags | null = null;
   const syncTags = () => {
-    const want = settings.scoreTags && autoEnabled() && hasKeys(settings);
+    const want = settings.scoreTags && autoEnabled();
     if (want && !tags) {
       tags = startScoreTags({
         getStructured,
@@ -154,10 +154,9 @@ async function startHoverCards(ctx: ContentScriptContext): Promise<void> {
       memo.manual.delete(active.anchor);
     }
     if (mode === 'auto' && result.status !== 'match') {
-      // Don't pop up on non-titles; but say once per page when keys are missing.
+      // Don't pop up on non-titles; but say once per page when an own key is rejected.
       const keyProblem =
-        result.status === 'error' &&
-        ['missing-keys', 'bad-tmdb-key', 'bad-omdb-key'].includes(result.error);
+        result.status === 'error' && ['bad-tmdb-key', 'bad-omdb-key'].includes(result.error);
       if (keyProblem && !setupHintShown) {
         setupHintShown = true;
         show({ kind: 'result', result });
