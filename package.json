@@ -2,7 +2,7 @@
   "name": "popscore",
   "description": "See the IMDb rating of any movie by hovering its title on cinema and streaming sites.",
   "private": true,
-  "version": "0.1.0",
+  "version": "2026.10.1",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -21,6 +21,7 @@
     "postinstall": "wxt prepare",
     "probe": "node scripts/build-probe.mjs",
     "zip:firefox": "wxt zip -b firefox",
+    "version:next": "node scripts/version-next.mjs",
     "server:build": "vite build -c server/vite.config.ts",
     "server:start": "node --env-file-if-exists=.env dist/server/index.mjs",
     "server:dev": "npm run server:build && (vite build -c server/vite.config.ts --watch --logLevel warn & node --env-file-if-exists=.env --watch dist/server/index.mjs)"

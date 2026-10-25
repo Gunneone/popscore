@@ -137,6 +137,7 @@ npm run compile        # typecheck
 npm run lint
 npm run lint:firefox   # Mozilla's add-on linter on the Firefox build
 npm run zip            # store packages for Chrome and Firefox (+ sources zip for AMO)
+npm run version:next   # set the next calendar version, YYYY.M.N (2026.10.1, 2026.10.2, 2026.11.1)
 node scripts/make-icons.mjs   # regenerate public/icon/*.png
 ```
 
@@ -176,7 +177,8 @@ its address, and give it an OMDb key with a large enough daily allowance.
 
 See [docs/store-listing.md](docs/store-listing.md) for listing text, permission justifications and the data disclosure, and
 [docs/PRIVACY.md](docs/PRIVACY.md) for the privacy policy (host it publicly, e.g. via GitHub Pages, and link it in both
-stores). Run `npm run zip`, then upload `dist/popscore-chrome-<version>.zip` to the Chrome Web Store and
+stores). Run `npm run version:next` (versions are year, month and the release number in that
+month), then `npm run zip`, then upload `dist/popscore-chrome-<version>.zip` to the Chrome Web Store and
 `dist/popscore-firefox-<version>.zip` plus `dist/popscore-source-<version>.zip` to addons.mozilla.org.
 
 Movie data from [TMDB](https://www.themoviedb.org/) (this product uses the TMDB API but is not
