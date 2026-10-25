@@ -15,6 +15,8 @@ export default defineConfig({
   zip: {
     artifactTemplate: '{{name}}-{{browser}}-{{packageVersion}}.zip',
     sourcesTemplate: '{{name}}-source-{{packageVersion}}.zip',
+    // Local Playwright output (screenshots, site reports) is gitignored and not source.
+    excludeSources: ['test-results/**', 'playwright-report/**'],
   },
   vite: () => ({ plugins: [preact()] }),
   // A function, so it runs after WXT has loaded .env (WXT_SERVER_URL for the host permission).
