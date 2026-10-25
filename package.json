@@ -3,6 +3,7 @@
   "description": "See the IMDb rating of any movie by hovering its title on cinema and streaming sites.",
   "private": true,
   "version": "2026.10.1",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "wxt",
