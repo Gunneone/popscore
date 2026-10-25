@@ -7,7 +7,7 @@ is worth it.
 
 - Rest the pointer on a poster or title for half a second on an enabled site, or hold **Alt (⌥)** to
   look up any title instantly.
-- Works out of the box on 128 cinema and streaming sites in the German- and English-speaking
+- Works out of the box on 131 cinema and streaming sites in the German- and English-speaking
   markets (DE, AT, CH, UK, IE, US, CA, AU, NZ), listed in [src/sites.ts](src/sites.ts). In the
   settings they're grouped into Cinemas, Streaming services and Your sites; each list and each site
   can be switched off on its own.
@@ -139,6 +139,7 @@ npm run lint:firefox   # Mozilla's add-on linter on the Firefox build
 npm run zip            # store packages for Chrome and Firefox (+ sources zip for AMO)
 npm run version:next   # set the next calendar version, YYYY.M.N (2026.10.1, 2026.10.2, 2026.11.1)
 node scripts/make-icons.mjs   # regenerate public/icon/*.png
+npm run store:assets   # store screenshots and promo tiles in store/ (build first; needs keys in .env)
 ```
 
 `npm run e2e:sites` opens every site in [src/sites.ts](src/sites.ts), points at film links (they

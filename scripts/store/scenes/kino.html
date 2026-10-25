@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Kinoprogramm · Lumen Kino</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #fff;
+        color: #1b1f24;
+        font:
+          15px/1.4 -apple-system,
+          'Helvetica Neue',
+          Arial,
+          sans-serif;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        height: 58px;
+        padding: 0 40px;
+        background: #0f3d3e;
+        color: #fff;
+      }
+      .brand {
+        font:
+          700 20px/1 Georgia,
+          serif;
+        letter-spacing: 0.12em;
+      }
+      nav {
+        display: flex;
+        gap: 22px;
+        font-size: 14px;
+        color: #bfd8d4;
+      }
+      nav .on {
+        color: #fff;
+      }
+      main {
+        padding: 22px 40px;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 24px;
+      }
+      .date {
+        margin: 0 0 16px;
+        color: #66707a;
+      }
+      table {
+        width: 640px;
+        border-collapse: collapse;
+      }
+      td {
+        padding: 11px 0;
+        border-top: 1px solid #e6e9ec;
+        vertical-align: middle;
+      }
+      td.film a {
+        color: #1b1f24;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      td.film small {
+        display: block;
+        color: #78828c;
+        font-size: 12px;
+        margin-top: 2px;
+      }
+      td.times {
+        text-align: right;
+        white-space: nowrap;
+      }
+      td.times span {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 3px 9px;
+        border-radius: 5px;
+        background: #e8f1f0;
+        color: #0f3d3e;
+        font-size: 13px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">LUMEN KINO</div>
+      <nav>
+        <span class="on">Programm</span><span>Vorschau</span><span>Events</span
+        ><span>Gutscheine</span>
+      </nav>
+    </header>
+    <main>
+      <h1>Kinoprogramm</h1>
+      <p class="date">Samstag, 25. Oktober</p>
+      <table id="list"></table>
+    </main>
+    <script>
+      const FILMS = [
+        ['Frankenstein', 'FSK 16 · 150 Min.', ['16:00', '20:00']],
+        ['Die Unfassbaren 3 – Now You See Me', 'FSK 12 · 113 Min.', ['17:00', '19:50']],
+        ['Wicked: Teil 2', 'FSK 6 · 138 Min.', ['15:30', '19:45']],
+        ['Hamnet', 'FSK 12 · 126 Min.', ['17:15', '20:30']],
+        ['Bugonia', 'FSK 16 · 120 Min.', ['19:00', '21:45']],
+        ['Predator: Badlands', 'FSK 16 · 107 Min.', ['18:30', '21:15']],
+        ['Anaconda', 'FSK 12 · 99 Min.', ['20:45']],
+      ];
+      const slug = (t) =>
+        t
+          .toLowerCase()
+          .normalize('NFKD')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+      document.getElementById('list').innerHTML = FILMS.map(
+        ([title, info, times], i) => `
+        <tr>
+          <td class="film"><a id="film-${i}" href="/film/${slug(title)}">${title}</a><small>${info}</small></td>
+          <td class="times">${times.map((t) => `<span>${t}</span>`).join('')}</td>
+        </tr>`,
+      ).join('');
+    </script>
+  </body>
+</html>

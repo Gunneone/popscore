@@ -20,6 +20,7 @@
     "lint:firefox": "wxt build -b firefox && web-ext lint --source-dir dist/firefox",
     "postinstall": "wxt prepare",
     "probe": "node scripts/build-probe.mjs",
+    "store:assets": "node scripts/store/shoot.mjs",
     "zip:firefox": "wxt zip -b firefox",
     "version:next": "node scripts/version-next.mjs",
     "server:build": "vite build -c server/vite.config.ts",

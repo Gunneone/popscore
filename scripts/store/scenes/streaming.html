@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Reelhouse · Home</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #0b0d12;
+        color: #e8eaf0;
+        font:
+          14px/1.4 -apple-system,
+          'Helvetica Neue',
+          Arial,
+          sans-serif;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 30px;
+        height: 64px;
+        padding: 0 44px;
+        background: linear-gradient(#000a, transparent);
+      }
+      .brand {
+        font:
+          800 22px/1 -apple-system,
+          sans-serif;
+        letter-spacing: -0.02em;
+        color: #ff4f6d;
+      }
+      nav {
+        display: flex;
+        gap: 22px;
+        color: #9aa1b2;
+      }
+      nav .on {
+        color: #fff;
+        font-weight: 600;
+      }
+      .avatar {
+        margin-left: auto;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6d7cff, #ff4f6d);
+      }
+      section {
+        margin: 6px 0 22px;
+      }
+      h2 {
+        margin: 0 44px 12px;
+        font-size: 19px;
+        font-weight: 650;
+      }
+      .row {
+        display: flex;
+        gap: 14px;
+        padding: 0 44px;
+        overflow: hidden;
+      }
+      .row a {
+        flex: none;
+        width: 162px;
+      }
+      .row img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 2 / 3;
+        object-fit: cover;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">reelhouse</div>
+      <nav>
+        <span class="on">Home</span><span>Series</span><span>Movies</span><span>My list</span>
+      </nav>
+      <div class="avatar"></div>
+    </header>
+    <section>
+      <h2>Top series this week</h2>
+      <div class="row" id="series"></div>
+    </section>
+    <section>
+      <h2>New movies</h2>
+      <div class="row" id="movies"></div>
+    </section>
+    <script>
+      const SERIES = [
+        ['Severance', '/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg'],
+        ['The Pitt', '/kvFSpESyBZMjaeOJDx7RS3P1jey.jpg'],
+        ['Pluribus', '/z7Nga7Q9IGFWs5OEduY2gGFxnX3.jpg'],
+        ['Slow Horses', '/AdYr4DjOgXvDUMwu6vEhZy1Rnxk.jpg'],
+        ['The Last of Us', '/dmo6TYuuJgaYinXBPjrgG9mB5od.jpg'],
+        ['Wednesday', '/9PFonBhy4cQy7Jz20NpMygczOkv.jpg'],
+        ['Adolescence', '/20i4nShZZg1g1VFHSB8xpaYM4r7.jpg'],
+        ['Andor', '/khZqmwHQicTYoS7Flreb9EddFZC.jpg'],
+      ];
+      const MOVIES = [
+        ['Sinners', '/fWPgbnt2LSqkQ6cdQc0SZN9CpLm.jpg'],
+        ['Weapons', '/cpf7vsRZ0MYRQcnLWteD5jK9ymT.jpg'],
+        ['One Battle After Another', '/lbBWwxBht4JFP5PsuJ5onpMqugW.jpg'],
+        ['Snow White', '/oLxWocqheC8XbXbxqJ3x422j9PW.jpg'],
+        ['F1', '/9PXZIUsSDh4alB80jheWX4fhZmy.jpg'],
+        ['A Minecraft Movie', '/yFHHfHcUgGAxziP1C3lLt0q2T4s.jpg'],
+        ['Superman', '/ldyfo0BKmz5rWtJJKCvwaNS4cJT.jpg'],
+        ['Frankenstein', '/g4JtvGlQO7DByTI6frUobqvSL3R.jpg'],
+      ];
+      const tile =
+        (kind) =>
+        ([title, poster], i) =>
+          `<a href="/${kind}/${i}" aria-label="${title}"><img id="${kind}-${i}" alt="${title}" src="https://image.tmdb.org/t/p/w342${poster}" /></a>`;
+      document.getElementById('series').innerHTML = SERIES.map(tile('series')).join('');
+      document.getElementById('movies').innerHTML = MOVIES.map(tile('movie')).join('');
+    </script>
+  </body>
+</html>

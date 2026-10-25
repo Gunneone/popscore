@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Lumen Cinema · Now showing</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f7f3ee;
+        color: #1d1a17;
+        font:
+          14px/1.4 -apple-system,
+          'Helvetica Neue',
+          Arial,
+          sans-serif;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+        height: 60px;
+        padding: 0 40px;
+        background: #1d1a17;
+        color: #f7f3ee;
+      }
+      .brand {
+        font:
+          700 22px/1 Georgia,
+          serif;
+        letter-spacing: 0.18em;
+      }
+      .brand span {
+        color: #e0a43a;
+      }
+      nav {
+        display: flex;
+        gap: 24px;
+        font-size: 14px;
+        opacity: 0.8;
+      }
+      nav .on {
+        opacity: 1;
+        border-bottom: 2px solid #e0a43a;
+        padding-bottom: 4px;
+      }
+      .days {
+        display: flex;
+        gap: 8px;
+        padding: 18px 40px 6px;
+      }
+      .days b {
+        padding: 7px 14px;
+        border: 1px solid #d9d0c5;
+        border-radius: 999px;
+        font-weight: 500;
+        font-size: 13px;
+        background: #fff;
+      }
+      .days b.on {
+        background: #1d1a17;
+        color: #fff;
+        border-color: #1d1a17;
+      }
+      h1 {
+        margin: 14px 40px 14px;
+        font:
+          700 26px/1.2 Georgia,
+          serif;
+      }
+      ul.grid {
+        display: grid;
+        grid-template-columns: repeat(var(--cols, 8), minmax(0, 1fr));
+        gap: 22px 22px;
+        margin: 0 40px;
+        padding: 0;
+        list-style: none;
+      }
+      .film img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 2 / 3;
+        object-fit: cover;
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgb(0 0 0 / 0.15);
+      }
+      .film h3 {
+        margin: 9px 0 2px;
+        font-size: 14px;
+        font-weight: 650;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .film .times {
+        display: flex;
+        gap: 6px;
+      }
+      .film .times span {
+        padding: 1px 7px;
+        border: 1px solid #d9d0c5;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #5c544c;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">LUMEN<span>·</span></div>
+      <nav>
+        <span class="on">Now showing</span><span>Coming soon</span><span>Events</span
+        ><span>Gift cards</span>
+      </nav>
+    </header>
+    <div class="days">
+      <b class="on">Today</b><b>Sun 26</b><b>Mon 27</b><b>Tue 28</b><b>Wed 29</b><b>Thu 30</b>
+    </div>
+    <h1>Now showing</h1>
+    <ul class="grid" id="grid"></ul>
+    <script>
+      const FILMS = [
+        ['Hamnet', '/vbeyOZm2bvBXcbgPD3v6o94epPX.jpg', '17:15', '20:30'],
+        ['Marty Supreme', '/lYWEXbQgRTR4ZQleSXAgRbxAjvq.jpg', '18:00', '21:00'],
+        ['Avatar: Fire and Ash', '/bRBeSHfGHwkEpImlhxPmOcUsaeg.jpg', '16:30', '20:00'],
+        ['Zootopia 2', '/oJ7g2CifqpStmoYQyaLQgEU32qO.jpg', '14:00', '16:15'],
+        ['Wicked: For Good', '/si9tolnefLSUKaqQEGz1bWArOaL.jpg', '15:30', '19:45'],
+        ['Bugonia', '/rSdOua3wKMEaFWDcKAYWRjXQWOt.jpg', '19:00', '21:45'],
+        ["Five Nights at Freddy's 2", '/udAxQEORq2I5wxI97N2TEqdhzBE.jpg', '20:15', '22:30'],
+        ['Anaconda', '/hBxN6dwrANN1ic3a4G9x6JZcR3C.jpg', '17:45', '20:45'],
+        ['The Running Man', '/dKL78O9zxczVgjtNcQ9UkbYLzqX.jpg', '19:30', '22:15'],
+        ['Predator: Badlands', '/pHpq9yNUIo6aDoCXEBzjSolywgz.jpg', '18:30', '21:15'],
+        [
+          'Chainsaw Man – The Movie: Reze Arc',
+          '/pHyxb2RV5wLlboAwm9ZJ9qTVEDw.jpg',
+          '20:00',
+          '22:40',
+        ],
+        ["Now You See Me: Now You Don't", '/oD3Eey4e4Z259XLm3eD3WGcoJAh.jpg', '17:00', '19:50'],
+        ['KPop Demon Hunters', '/zT7Lhw3BhJbMkRqm9Zlx2YGMsY0.jpg', '13:30', '15:45'],
+        ['Black Phone 2', '/vBOpqxW0SDhACwEO2LZT29DuNG2.jpg', '20:30', '22:50'],
+        ['War of the Worlds', '/yvirUYrva23IudARHn3mMGVxWqM.jpg', '21:00', '23:00'],
+        [
+          'Mission: Impossible – The Final Reckoning',
+          '/iKPsC9EFUafRP9SrUznI61getVP.jpg',
+          '16:45',
+          '20:15',
+        ],
+      ];
+      // ?cols=5 for the close-up.
+      const cols = new URLSearchParams(location.search).get('cols');
+      if (cols) document.documentElement.style.setProperty('--cols', cols);
+      document.getElementById('grid').innerHTML = FILMS.map(
+        ([title, poster, a, b], i) => `
+        <li class="film">
+          <a href="/film/${i}"><img id="poster-${i}" alt="${title.replace(/"/g, '&quot;')}" src="https://image.tmdb.org/t/p/w342${poster}" /></a>
+          <h3>${title}</h3>
+          <div class="times"><span>${a}</span><span>${b}</span></div>
+        </li>`,
+      ).join('');
+    </script>
+  </body>
+</html>
