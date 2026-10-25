@@ -236,6 +236,9 @@ describe('titleFromUrl', () => {
     ['/movies/12345-dune-part-two/tickets', 'dune part two'],
     ['/filme/shaun-das-schaf-spuk-im-kuerbisfeld-2026', 'shaun das schaf spuk im kuerbisfeld'],
     ['https://www.cinemaxx.de/film/street-fighter_a1b2c3d4e5', 'street fighter'],
+    // A sequel's number is part of the title.
+    ['/film/zoomania-2', 'zoomania 2'],
+    ['/movies/toy-story-4-48213', 'toy story 4'],
   ])('%j -> %j', (href, title) => {
     expect(titleFromUrl(href, base)).toEqual({ title, series: false });
   });

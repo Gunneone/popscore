@@ -55,7 +55,8 @@ export function titleFromUrl(
   const slug = segments
     .find((s) => /\p{L}{3}/u.test(s))
     ?.replace(/\.\w+$/, '')
-    .replace(/^\d+[-_]|[-_](?:\d+|(?=[a-z]*\d)[a-z0-9]{8,})$/gi, '')
+    // Ids and years go; a sequel's short number stays ("zoomania-2" is not "zoomania").
+    .replace(/^\d+[-_]|[-_](?:\d{3,}|(?=[a-z]*\d)[a-z0-9]{8,})$/gi, '')
     .replace(/[-_+.]+/g, ' ')
     .trim();
   return slug && /\p{L}{3}/u.test(slug) ? { title: slug, series: !film } : null;
