@@ -30,15 +30,23 @@ const SERIES_PATH = /\/(?:serie|serien|series|tv-?shows?|tv-?series)\/(.+)$/i;
 const BROWSE_SEGMENT =
   /^(?:years?|decades?|genres?|countr(?:y|ies)|languages?|(?:mini-)?themes?|studios?|tags?|categor(?:y|ies)|kategorien?|jahr|land|sprache)$/i;
 
+/** A year at either end of a slug: "2026-sinn-und-sinnlichkeit", "dune-part-two-2024". */
+function slugYear(slug: string): number | undefined {
+  const m = /^((?:19|20)\d{2})[-_]|[-_]((?:19|20)\d{2})$/.exec(slug);
+  const year = m ? Number(m[1] ?? m[2]) : undefined;
+  // Not a title's number in the future: "blade-runner-2049".
+  return year !== undefined && year <= new Date().getFullYear() + 2 ? year : undefined;
+}
+
 /**
  * The film or show a detail link points to, from its URL: "/film/avengers-doomsday-2026" ->
- * "avengers doomsday". Promo banners often carry a tagline as alt text but name the film in the
- * link.
+ * "avengers doomsday", 2026. Promo banners often carry a tagline as alt text but name the film in
+ * the link.
  */
 export function titleFromUrl(
   href: string,
   base = location.href,
-): { title: string; series: boolean } | null {
+): { title: string; series: boolean; year?: number } | null {
   let path: string;
   try {
     path = decodeURIComponent(new URL(href, base).pathname);
@@ -52,14 +60,15 @@ export function titleFromUrl(
   if (segments.length > 1 && BROWSE_SEGMENT.test(segments[0])) return null;
   // An IMDb id names no title, and what follows is a sub-page: "/title/tt0446029/maindetails".
   if (segments.some((s) => /^tt\d{7,}$/.test(s))) return null;
-  const slug = segments
-    .find((s) => /\p{L}{3}/u.test(s))
-    ?.replace(/\.\w+$/, '')
+  const segment = segments.find((s) => /\p{L}{3}/u.test(s))?.replace(/\.\w+$/, '');
+  const slug = segment
     // Ids and years go; a sequel's short number stays ("zoomania-2" is not "zoomania").
-    .replace(/^\d+[-_]|[-_](?:\d{3,}|(?=[a-z]*\d)[a-z0-9]{8,})$/gi, '')
+    ?.replace(/^\d+[-_]|[-_](?:\d{3,}|(?=[a-z]*\d)[a-z0-9]{8,})$/gi, '')
     .replace(/[-_+.]+/g, ' ')
     .trim();
-  return slug && /\p{L}{3}/u.test(slug) ? { title: slug, series: !film } : null;
+  if (!slug || !/\p{L}{3}/u.test(slug)) return null;
+  const year = slugYear(segment!);
+  return year === undefined ? { title: slug, series: !film } : { title: slug, series: !film, year };
 }
 
 function visibleText(el: Element): string {
@@ -153,7 +162,10 @@ export function extractCandidates(target: Element, opts: Options = {}): Extracte
       if (prev) {
         // Several signals agreeing on the same text make it more likely to be the title.
         prev.weight = Math.max(prev.weight, w) + 0.1;
-        prev.year ??= c.year;
+        if (c.year !== undefined && (prev.year === undefined || prev.softYear)) {
+          prev.year = c.year;
+          delete prev.softYear;
+        }
         if (series || c.series) prev.series = true;
       } else {
         const cand: ExtractedCandidate = { text: c.title, year: c.year, weight: w, source, anchor };
@@ -164,7 +176,15 @@ export function extractCandidates(target: Element, opts: Options = {}): Extracte
   };
   const addUrl = (href: string | null, weight: number, anchor: Element) => {
     const fromUrl = titleFromUrl(href ?? '');
-    if (fromUrl) add(fromUrl.title, weight, 'url', anchor, fromUrl.series);
+    if (!fromUrl) return;
+    add(fromUrl.title, weight, 'url', anchor, fromUrl.series);
+    // Sites often put the year they added the film in its link ("/filme/2023-tatsaechlich-liebe"
+    // is from 2003): it ranks same-named films, but a year on the page itself wins.
+    const cand = found.get(normalizeTitle(fromUrl.title));
+    if (cand && cand.year === undefined && fromUrl.year !== undefined) {
+      cand.year = fromUrl.year;
+      cand.softYear = true;
+    }
   };
 
   let el: Element | null = target;

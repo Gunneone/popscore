@@ -59,7 +59,7 @@ websites, and shows a card with the details when you rest your pointer on a titl
 • Brand-new releases without an IMDb rating yet show TMDB's user score, clearly labelled
 • Poster, year, genres, runtime and a short plot; for TV shows, the years they ran and their seasons
 • Movies, TV shows or both: your choice in the settings
-• Works out of the box on 131 cinema and streaming sites in Germany, Austria, Switzerland, the UK, Ireland, the US, Canada, Australia and New Zealand: Netflix, Prime Video, Disney+, CineStar, Odeon, AMC, Hoyts and many more
+• Works out of the box on 132 cinema and streaming sites in Germany, Austria, Switzerland, the UK, Ireland, the US, Canada, Australia and New Zealand: Netflix, Prime Video, Disney+, CineStar, Odeon, AMC, Hoyts and many more
 • Switch it on for any other site from the toolbar button, or hold Alt (⌥) to look up any title anywhere
 • Understands German titles ("Die Unfassbaren" → Now You See Me)
 • "Wrong movie?" lets you pick the right title; your choice is remembered
@@ -92,7 +92,7 @@ oder Poster ruht:
 • Ganz neue Filme ohne IMDb-Bewertung zeigen die TMDB-Nutzerwertung, klar gekennzeichnet
 • Poster, Jahr, Genres, Laufzeit und kurze Handlung; bei Serien die Laufzeit in Jahren und die Staffeln
 • Filme, Serien oder beides: du wählst in den Einstellungen
-• Läuft sofort auf 131 Kino- und Streaming-Seiten in Deutschland, Österreich, der Schweiz, Großbritannien, Irland, den USA, Kanada, Australien und Neuseeland: Netflix, Prime Video, Disney+, CineStar, Cineplex, UCI, Odeon, AMC und viele mehr
+• Läuft sofort auf 132 Kino- und Streaming-Seiten in Deutschland, Österreich, der Schweiz, Großbritannien, Irland, den USA, Kanada, Australien und Neuseeland: Netflix, Prime Video, Disney+, CineStar, Cineplex, UCI, Odeon, AMC und viele mehr
 • Für jede andere Seite mit einem Klick auf das Symbol in der Symbolleiste einschalten, oder Alt (⌥) halten und überall auf einen Titel zeigen
 • Versteht deutsche Titel („Die Unfassbaren“ → Now You See Me)
 • „Wrong movie?“ lässt dich den richtigen Titel wählen; deine Wahl wird gespeichert

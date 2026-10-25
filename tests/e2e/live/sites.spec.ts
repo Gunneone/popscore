@@ -22,6 +22,7 @@ const DWELL_WAIT_MS = 3500;
 const START_URLS: Record<string, string> = {
   // Chains whose home page only asks you to pick a cinema.
   cinestar: 'https://www.cinestar.de/kino-dortmund',
+  'filmspiegel-essen': 'https://filmspiegel-essen.de/filme/',
   kinopolis: 'https://www.kinopolis.de/bn',
   astor: 'https://premiumkino.de/astor-film-lounge-berlin',
   primevideo: 'https://www.primevideo.com/',

@@ -241,6 +241,32 @@ describe('rankResults', () => {
     expect(top.confident).toBe(true);
   });
 
+  it("ranks by a link's soft year over popularity (filmspiegel-essen.de: a remake of an old hit)", () => {
+    const old = movie({
+      tmdbId: 4584,
+      title: 'Sinn und Sinnlichkeit',
+      originalTitle: 'Sense and Sensibility',
+      year: 1995,
+      releaseDate: '1995-12-13',
+      voteCount: 3500,
+    });
+    const remake = movie({
+      tmdbId: 9001,
+      title: 'Sinn und Sinnlichkeit',
+      originalTitle: 'Sense and Sensibility',
+      year: 2026,
+      releaseDate: '2026-10-01',
+      voteCount: 40,
+    });
+    const [top] = rankResults('Sinn und Sinnlichkeit', 2026, [old, remake], {
+      cinema: false,
+      now,
+      softYear: true,
+    });
+    expect(top.movie.tmdbId).toBe(9001);
+    expect(top.confident).toBe(true);
+  });
+
   const dark = movie({
     kind: 'tv',
     tmdbId: 70523,

@@ -102,6 +102,31 @@ describe('extractCandidates', () => {
     expect(texts(q('img'))).toContain('avengers doomsday');
   });
 
+  it('takes the year in the film link as a soft year (filmspiegel-essen.de)', () => {
+    setBody(`
+      <div><a href="https://filmspiegel-essen.de/filme/2026-sinn-und-sinnlichkeit/" title="Filmprogramm vom Sinn und Sinnlichkeit">
+        <div class="slide-movie">
+          <div class="slide-movie-poster"><img src="p.jpg" alt="Sinn und Sinnlichkeit Poster"></div>
+          <div class="slide-movie-overlay">
+            <p class="slide-movie-caption">Sinn und Sinnlichkeit</p>
+            <p class="slide-movie-description">Neuverfilmung des gleichnamigen Romans von Jane Austen</p>
+          </div>
+        </div>
+      </a></div>`);
+    const [top] = extractCandidates(q('img'));
+    expect(top).toMatchObject({ text: 'Sinn und Sinnlichkeit', year: 2026, softYear: true });
+  });
+
+  it("prefers a year on the page to the link's", () => {
+    setBody(`
+      <div class="tile"><a href="/filme/2026-alte-liebe/">
+        <img src="p.jpg" alt=""><h3>Alte Liebe (2025)</h3>
+      </a></div>`);
+    const top = extractCandidates(q('img'))[0];
+    expect(top.year).toBe(2025);
+    expect(top.softYear).toBeUndefined();
+  });
+
   it('ignores a heading that names a row of tiles (filmingo.ch)', () => {
     setBody(`
       <section>
@@ -234,13 +259,28 @@ describe('titleFromUrl', () => {
     ['/kino-dortmund/film/primetime', 'primetime'],
     ['/film/avengers-doomsday/', 'avengers doomsday'],
     ['/movies/12345-dune-part-two/tickets', 'dune part two'],
-    ['/filme/shaun-das-schaf-spuk-im-kuerbisfeld-2026', 'shaun das schaf spuk im kuerbisfeld'],
     ['https://www.cinemaxx.de/film/street-fighter_a1b2c3d4e5', 'street fighter'],
     // A sequel's number is part of the title.
     ['/film/zoomania-2', 'zoomania 2'],
     ['/movies/toy-story-4-48213', 'toy story 4'],
   ])('%j -> %j', (href, title) => {
     expect(titleFromUrl(href, base)).toEqual({ title, series: false });
+  });
+
+  it.each([
+    ['/filme/2026-sinn-und-sinnlichkeit/', 'sinn und sinnlichkeit', 2026],
+    ['/filme/1942-casablanca', 'casablanca', 1942],
+    [
+      '/filme/shaun-das-schaf-spuk-im-kuerbisfeld-2026',
+      'shaun das schaf spuk im kuerbisfeld',
+      2026,
+    ],
+  ])('%j -> %j from %d', (href, title, year) => {
+    expect(titleFromUrl(href, base)).toEqual({ title, series: false, year });
+  });
+
+  it("doesn't read a title's number as a year", () => {
+    expect(titleFromUrl('/film/blade-runner-2049', base)?.year).toBeUndefined();
   });
 
   it.each([

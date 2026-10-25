@@ -58,6 +58,7 @@ const CINEMAS: SiteDef[] = [
   cinema('de', 'cinemahlen', 'CinemAhlen', 'cinemahlen.de'),
   cinema('de', 'schauburg', 'Schauburg', 'schauburg-kino.com'),
   cinema('de', 'roxy-dortmund', 'Roxy Lichtspielhaus', 'roxy-lichtspielhaus.de'),
+  cinema('de', 'filmspiegel-essen', 'Filmspiegel Essen', 'filmspiegel-essen.de'),
   cinema('at', 'cineplexx', 'Cineplexx', 'cineplexx.at', 'villagecinemas.at'),
   cinema('at', 'megaplex', 'Hollywood Megaplex', 'megaplex.at'),
   cinema('at', 'dieselkino', 'Dieselkino', 'dieselkino.at'),

@@ -11,8 +11,9 @@ export interface Candidate {
   text: string;
   year?: number;
   /**
-   * The year came from the page's structured data, which sites often fill with the date they
-   * added the film rather than its release: a ranking hint only, never a reason to reject.
+   * The year came from the page's structured data or a film link's slug, which sites often fill
+   * with the date they added the film rather than its release: a ranking hint only, never a
+   * reason to reject.
    */
   softYear?: boolean;
   /** The text named a season or episode, or the link or page marks a series: TV shows only. */

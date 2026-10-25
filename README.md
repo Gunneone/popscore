@@ -7,7 +7,7 @@ is worth it.
 
 - Rest the pointer on a poster or title for half a second on an enabled site, or hold **Alt (⌥)** to
   look up any title instantly.
-- Works out of the box on 131 cinema and streaming sites in the German- and English-speaking
+- Works out of the box on 132 cinema and streaming sites in the German- and English-speaking
   markets (DE, AT, CH, UK, IE, US, CA, AU, NZ), listed in [src/sites.ts](src/sites.ts). In the
   settings they're grouped into Cinemas, Streaming services and Your sites; each list and each site
   can be switched off on its own.
