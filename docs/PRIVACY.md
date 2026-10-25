@@ -66,7 +66,3 @@ Removing the extension deletes all of it. The settings page has a button to clea
   with only "Alt-hover on every site", nothing is read until you point at a title.
 - **storage**: settings and cache. **scripting / activeTab**: to start the card on a site you just
   switched on.
-
-## Contact
-
-Questions: open an issue in the project's repository.
