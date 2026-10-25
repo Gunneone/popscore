@@ -1,5 +1,5 @@
-// Draws the extension icon (a popcorn bucket on a midnight-blue rounded square) as PNGs, no image
-// tools needed.
+// Draws the extension icon (a popcorn bucket on a midnight-blue rounded square, its popcorn in the
+// tag colors) as PNGs, no image tools needed.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
@@ -44,8 +44,11 @@ function png(size, rgba) {
 
 // The logo's shapes on its 128-unit grid, painted in order.
 const MIDNIGHT = [0x1f, 0x25, 0x47];
-const KERNEL = [0xff, 0xf8, 0xe7];
-const KERNEL_SHADE = [0xff, 0xf3, 0xd1];
+const STRIPE = [0xff, 0xf8, 0xe7];
+// The same as the score tags' bad, okay and good backgrounds in src/ui/tag.css.
+const BAD = [0xd2, 0x3c, 0x3c];
+const OKAY = [0xf2, 0xb5, 0x44];
+const GOOD = [0x19, 0x8a, 0x47];
 const BUCKET = [0xe2, 0x3d, 0x4b];
 const RIM = [0xc4, 0x2f, 0x3d];
 
@@ -71,14 +74,33 @@ function polygon(points) {
   };
 }
 
+/** A popcorn kernel, a puff with a bumpy top: its gap to what's behind it, its body and its highlight. */
+function kernel(color, cx, cy, r) {
+  const light = color.map((c) => Math.round(c + (255 - c) * 0.3));
+  const puffs = [
+    [cx, cy + r * 0.15, r * 0.8],
+    [cx - r * 0.42, cy - r * 0.05, r * 0.55],
+    [cx, cy - r * 0.38, r * 0.58],
+    [cx + r * 0.42, cy - r * 0.05, r * 0.55],
+  ];
+  const puff = (grow) => (x, y) => puffs.some(([px, py, pr]) => circle(px, py, pr + grow)(x, y));
+  return [
+    [MIDNIGHT, puff(2.5)],
+    [color, puff(0)],
+    [light, circle(cx - r * 0.32, cy - r * 0.4, r * 0.2)],
+  ];
+}
+
 const TILE = roundedRect(0, 0, 128, 128, 28);
 const LAYERS = [
   [MIDNIGHT, TILE],
-  [KERNEL, circle(42, 50, 15)],
-  [KERNEL, circle(64, 38, 18)],
-  [KERNEL, circle(86, 50, 15)],
-  [KERNEL_SHADE, circle(53, 56, 13)],
-  [KERNEL_SHADE, circle(75, 56, 13)],
+  // The popcorn: three kernels in the tag colors, each cut out from what's behind it by a gap of
+  // background and lit by a highlight, piled into the bucket with the middle one at the back.
+  ...kernel(OKAY, 64, 37, 22),
+  ...kernel(BAD, 41, 49, 18),
+  ...kernel(GOOD, 87, 49, 18),
+  // The same gap between the popcorn and the rim.
+  [MIDNIGHT, roundedRect(24, 55.5, 80, 14, 7)],
   [
     BUCKET,
     polygon([
@@ -90,7 +112,7 @@ const LAYERS = [
   ],
   // White stripes, following the bucket's taper.
   [
-    KERNEL,
+    STRIPE,
     polygon([
       [43.6, 62],
       [57.2, 62],
@@ -99,7 +121,7 @@ const LAYERS = [
     ]),
   ],
   [
-    KERNEL,
+    STRIPE,
     polygon([
       [70.8, 62],
       [84.4, 62],
