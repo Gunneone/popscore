@@ -122,23 +122,24 @@
     <h1>Now showing</h1>
     <ul class="grid" id="grid"></ul>
     <script>
+      // The first row mixes all three verdicts: with ?cols=5 it's all the screenshots show.
       const FILMS = [
         ['Hamnet', '/vbeyOZm2bvBXcbgPD3v6o94epPX.jpg', '17:15', '20:30'],
-        ['Marty Supreme', '/lYWEXbQgRTR4ZQleSXAgRbxAjvq.jpg', '18:00', '21:00'],
-        ['Avatar: Fire and Ash', '/bRBeSHfGHwkEpImlhxPmOcUsaeg.jpg', '16:30', '20:00'],
-        ['Zootopia 2', '/oJ7g2CifqpStmoYQyaLQgEU32qO.jpg', '14:00', '16:15'],
-        ['Wicked: For Good', '/si9tolnefLSUKaqQEGz1bWArOaL.jpg', '15:30', '19:45'],
-        ['Bugonia', '/rSdOua3wKMEaFWDcKAYWRjXQWOt.jpg', '19:00', '21:45'],
-        ["Five Nights at Freddy's 2", '/udAxQEORq2I5wxI97N2TEqdhzBE.jpg', '20:15', '22:30'],
         ['Anaconda', '/hBxN6dwrANN1ic3a4G9x6JZcR3C.jpg', '17:45', '20:45'],
-        ['The Running Man', '/dKL78O9zxczVgjtNcQ9UkbYLzqX.jpg', '19:30', '22:15'],
-        ['Predator: Badlands', '/pHpq9yNUIo6aDoCXEBzjSolywgz.jpg', '18:30', '21:15'],
+        ['Wicked: For Good', '/si9tolnefLSUKaqQEGz1bWArOaL.jpg', '15:30', '19:45'],
+        ['Zootopia 2', '/oJ7g2CifqpStmoYQyaLQgEU32qO.jpg', '14:00', '16:15'],
         [
           'Chainsaw Man – The Movie: Reze Arc',
           '/pHyxb2RV5wLlboAwm9ZJ9qTVEDw.jpg',
           '20:00',
           '22:40',
         ],
+        ['Marty Supreme', '/lYWEXbQgRTR4ZQleSXAgRbxAjvq.jpg', '18:00', '21:00'],
+        ['Avatar: Fire and Ash', '/bRBeSHfGHwkEpImlhxPmOcUsaeg.jpg', '16:30', '20:00'],
+        ['Bugonia', '/rSdOua3wKMEaFWDcKAYWRjXQWOt.jpg', '19:00', '21:45'],
+        ["Five Nights at Freddy's 2", '/udAxQEORq2I5wxI97N2TEqdhzBE.jpg', '20:15', '22:30'],
+        ['The Running Man', '/dKL78O9zxczVgjtNcQ9UkbYLzqX.jpg', '19:30', '22:15'],
+        ['Predator: Badlands', '/pHpq9yNUIo6aDoCXEBzjSolywgz.jpg', '18:30', '21:15'],
         ["Now You See Me: Now You Don't", '/oD3Eey4e4Z259XLm3eD3WGcoJAh.jpg', '17:00', '19:50'],
         ['KPop Demon Hunters', '/zT7Lhw3BhJbMkRqm9Zlx2YGMsY0.jpg', '13:30', '15:45'],
         ['Black Phone 2', '/vBOpqxW0SDhACwEO2LZT29DuNG2.jpg', '20:30', '22:50'],
@@ -150,9 +151,11 @@
           '20:15',
         ],
       ];
-      // ?cols=5 for the close-up.
-      const cols = new URLSearchParams(location.search).get('cols');
+      // ?cols=5 for the zoomed-in screenshots, ?compact without the day picker.
+      const params = new URLSearchParams(location.search);
+      const cols = params.get('cols');
       if (cols) document.documentElement.style.setProperty('--cols', cols);
+      if (params.has('compact')) document.querySelector('.days').remove();
       document.getElementById('grid').innerHTML = FILMS.map(
         ([title, poster, a, b], i) => `
         <li class="film">

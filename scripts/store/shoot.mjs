@@ -13,6 +13,14 @@ const SCENES = path.join(import.meta.dirname, 'scenes');
 const RAW = path.join(ROOT, 'test-results/store-raw');
 const OUT = path.join(ROOT, 'store');
 const DPR = 2;
+/** The page area of the browser window the screenshots frame (1280x800, minus margins and toolbar). */
+const SHOT = { width: 1152, height: 580 };
+
+/**
+ * A viewport `width` CSS px wide, zoomed to fill the framed window: the narrower, the larger the
+ * page and its tags come out. The store shows screenshots shrunk, so the pages are zoomed in.
+ */
+const zoomed = (width) => ({ width, height: Math.ceil((width * SHOT.height) / SHOT.width) });
 
 const env = { ...process.env };
 if (existsSync(path.join(ROOT, '.env'))) {
@@ -161,26 +169,26 @@ async function capture(page, name, clip) {
 
 const raw = {};
 
-// 1. Score tags on a whole cinema programme.
+// 1. Score tags on a cinema programme: one row, all three verdicts.
 {
-  const page = await open(CINEMA_URL, { width: 1360, height: 690 });
-  await waitForTags(page, 16);
+  const page = await open(`${CINEMA_URL}?cols=5&compact`, zoomed(690));
+  await waitForTags(page, 5);
   raw.tags = await capture(page, 'tags');
 }
 
 // 2. The card on a cinema page, close up.
 {
-  const page = await open(`${CINEMA_URL}?cols=5`, { width: 900, height: 456 });
+  const page = await open(`${CINEMA_URL}?cols=5&compact`, zoomed(790));
   await waitForTags(page, 5);
-  const at = await hover(page, '#poster-0', { x: 100, y: 120 });
+  const at = await hover(page, '#poster-0', { x: 80, y: 110 });
   await drawPointer(page, at);
   raw.card = await capture(page, 'card');
 }
 
 // 3. A streaming home page in dark mode, with a TV show's card.
 {
-  const page = await open(STREAMING_URL, { width: 1240, height: 629, dark: true });
-  await waitForTags(page, 14);
+  const page = await open(STREAMING_URL, { ...zoomed(860), dark: true });
+  await waitForTags(page, 8);
   const at = await hover(page, '#series-0', { x: 110, y: 150 });
   await drawPointer(page, at);
   raw.streaming = await capture(page, 'streaming');
@@ -188,7 +196,7 @@ const raw = {};
 
 // 4. A German showtimes list: a German title, and "Wrong movie?" opened.
 {
-  const page = await open(KINO_URL, { width: 1000, height: 507 });
+  const page = await open(KINO_URL, zoomed(760));
   await waitForTags(page, 7);
   await hover(page, '#film-2', { x: 40, y: 9 });
   const box = await cardBox(page);
@@ -216,14 +224,17 @@ const raw = {};
   raw.popup = await capture(page, 'popup', { x: 0, y: 0, width: 320, height: box.height });
 }
 
-// 5b. The settings page's color thresholds and link choices.
+// 5b. The settings page's color thresholds and link choices, without the card's other fields.
 {
   const page = await context.newPage();
-  await page.setViewportSize({ width: 760, height: 2400 });
+  await page.setViewportSize({ width: 500, height: 2400 });
   await page.goto(`chrome-extension://${extId}/options.html`);
   await page.waitForSelector('section.panel');
   await page.waitForTimeout(500);
   const panel = page.locator('section.panel').nth(2);
+  await panel.evaluate((el) => {
+    for (const field of [...el.querySelectorAll('.field')].slice(0, 3)) field.remove();
+  });
   const box = await panel.boundingBox();
   raw.settings = await capture(page, 'settings', {
     x: box.x - 1,
@@ -331,8 +342,8 @@ const SCREENSHOTS = [
       .panel { position: absolute; border-radius: 14px; overflow: hidden; background: #fff;
         box-shadow: 0 30px 80px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.08); }
       .panel img { display: block; width: 100%; }
-      .settings { left: 64px; top: 180px; width: 680px; }
-      .popup { left: 784px; top: 230px; width: 432px; }`,
+      .settings { left: 64px; top: 180px; width: 640px; }
+      .popup { left: 744px; top: 180px; width: 472px; }`,
   },
 ];
 
